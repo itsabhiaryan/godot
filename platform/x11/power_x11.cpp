@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,11 +28,37 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
+/*
+Adapted from corresponding SDL 2.0 code.
+*/
+
+/*
+  Simple DirectMedia Layer
+  Copyright (C) 1997-2017 Sam Lantinga <slouken@libsdl.org>
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+*/
+
 #include "power_x11.h"
 
 #include <stdio.h>
 #include <unistd.h>
 
+#include "core/error_macros.h"
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -145,25 +172,18 @@ void PowerX11::check_proc_acpi_battery(const char *node, bool *have_battery, boo
 				charge = true;
 			}
 		} else if (String(key) == "remaining capacity") {
-			char *endptr = NULL;
-			//const int cvt = (int) strtol(val, &endptr, 10);
 			String sval = val;
 			const int cvt = sval.to_int();
-			if (*endptr == ' ') {
-				remaining = cvt;
-			}
+			remaining = cvt;
 		}
 	}
 
 	ptr = &info[0];
 	while (make_proc_acpi_key_val(&ptr, &key, &val)) {
 		if (String(key) == "design capacity") {
-			char *endptr = NULL;
 			String sval = val;
 			const int cvt = sval.to_int();
-			if (*endptr == ' ') {
-				maximum = cvt;
-			}
+			maximum = cvt;
 		}
 	}
 
@@ -235,9 +255,9 @@ bool PowerX11::GetPowerInfo_Linux_proc_acpi() {
 	this->power_state = POWERSTATE_UNKNOWN;
 
 	dirp->change_dir(proc_acpi_battery_path);
-	dirp->list_dir_begin();
+	Error err = dirp->list_dir_begin();
 
-	if (dirp == NULL) {
+	if (err != OK) {
 		return false; /* can't use this interface. */
 	} else {
 		node = dirp->get_next();
@@ -249,8 +269,8 @@ bool PowerX11::GetPowerInfo_Linux_proc_acpi() {
 	}
 
 	dirp->change_dir(proc_acpi_ac_adapter_path);
-	dirp->list_dir_begin();
-	if (dirp == NULL) {
+	err = dirp->list_dir_begin();
+	if (err != OK) {
 		return false; /* can't use this interface. */
 	} else {
 		node = dirp->get_next();
@@ -419,9 +439,9 @@ bool PowerX11::GetPowerInfo_Linux_sys_class_power_supply(/*PowerState *state, in
 
 	DirAccess *dirp = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
 	dirp->change_dir(base);
-	dirp->list_dir_begin();
+	Error err = dirp->list_dir_begin();
 
-	if (!dirp) {
+	if (err != OK) {
 		return false;
 	}
 

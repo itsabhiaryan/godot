@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -300,7 +301,7 @@ enum _CellFlags {
 static inline void _plot_face(uint8_t ***p_cell_status, int x, int y, int z, int len_x, int len_y, int len_z, const Vector3 &voxelsize, const Face3 &p_face) {
 
 	Rect3 aabb(Vector3(x, y, z), Vector3(len_x, len_y, len_z));
-	aabb.pos = aabb.pos * voxelsize;
+	aabb.position = aabb.position * voxelsize;
 	aabb.size = aabb.size * voxelsize;
 
 	if (!p_face.intersects_aabb(aabb))
@@ -639,7 +640,7 @@ PoolVector<Face3> Geometry::wrap_geometry(PoolVector<Face3> p_array, real_t *p_e
 		Face3 f = faces[i];
 		for (int j = 0; j < 3; j++) {
 
-			f.vertex[j] -= global_aabb.pos;
+			f.vertex[j] -= global_aabb.position;
 		}
 		_plot_face(cell_status, 0, 0, 0, div_x, div_y, div_z, voxelsize, f);
 	}
@@ -706,7 +707,7 @@ PoolVector<Face3> Geometry::wrap_geometry(PoolVector<Face3> p_array, real_t *p_e
 
 			Vector3 &v = wrapped_faces_ptr[i].vertex[j];
 			v = v * voxelsize;
-			v += global_aabb.pos;
+			v += global_aabb.position;
 		}
 	}
 
@@ -1075,8 +1076,8 @@ void Geometry::make_atlas(const Vector<Size2i> &p_rects, Vector<Point2i> &r_resu
 
 	for (int i = 0; i < results.size(); i++) {
 
-		real_t h = nearest_power_of_2(results[i].max_h);
-		real_t w = nearest_power_of_2(results[i].max_w);
+		real_t h = next_power_of_2(results[i].max_h);
+		real_t w = next_power_of_2(results[i].max_w);
 		real_t aspect = h > w ? h / w : w / h;
 		if (aspect < best_aspect) {
 			best = i;

@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -307,10 +308,9 @@ bool FileAccessPack::file_exists(const String &p_name) {
 	return false;
 }
 
-FileAccessPack::FileAccessPack(const String &p_path, const PackedData::PackedFile &p_file) {
-
-	pf = p_file;
-	f = FileAccess::open(pf.pack, FileAccess::READ);
+FileAccessPack::FileAccessPack(const String &p_path, const PackedData::PackedFile &p_file)
+	: pf(p_file),
+	  f(FileAccess::open(pf.pack, FileAccess::READ)) {
 	if (!f) {
 		ERR_EXPLAIN("Can't open pack-referenced file: " + String(pf.pack));
 		ERR_FAIL_COND(!f);
@@ -439,13 +439,12 @@ Error DirAccessPack::change_dir(String p_dir) {
 
 String DirAccessPack::get_current_dir() {
 
-	String p;
 	PackedData::PackedDir *pd = current;
-	while (pd->parent) {
+	String p = current->name;
 
-		if (pd != current)
-			p = "/" + p;
-		p = p + pd->name;
+	while (pd->parent) {
+		pd = pd->parent;
+		p = pd->name + "/" + p;
 	}
 
 	return "res://" + p;

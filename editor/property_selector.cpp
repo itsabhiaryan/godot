@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -36,17 +37,19 @@ void PropertySelector::_text_changed(const String &p_newtext) {
 	_update_search();
 }
 
-void PropertySelector::_sbox_input(const InputEvent &p_ie) {
+void PropertySelector::_sbox_input(const Ref<InputEvent> &p_ie) {
 
-	if (p_ie.type == InputEvent::KEY) {
+	Ref<InputEventKey> k = p_ie;
 
-		switch (p_ie.key.scancode) {
+	if (k.is_valid()) {
+
+		switch (k->get_scancode()) {
 			case KEY_UP:
 			case KEY_DOWN:
 			case KEY_PAGEUP:
 			case KEY_PAGEDOWN: {
 
-				search_options->call("_gui_input", p_ie);
+				search_options->call("_gui_input", k);
 				search_box->accept_event();
 
 				TreeItem *root = search_options->get_root();
@@ -88,23 +91,17 @@ void PropertySelector::_update_search() {
 			instance->get_property_list(&props, true);
 		} else if (type != Variant::NIL) {
 			Variant v;
-			if (type == Variant::INPUT_EVENT) {
-				InputEvent ie;
-				ie.type = event_type;
-				v = ie;
-			} else {
-				Variant::CallError ce;
-				v = Variant::construct(type, NULL, 0, ce);
-			}
+			Variant::CallError ce;
+			v = Variant::construct(type, NULL, 0, ce);
 
 			v.get_property_list(&props);
 		} else {
 
 			Object *obj = ObjectDB::get_instance(script);
-			if (obj && obj->cast_to<Script>()) {
+			if (Object::cast_to<Script>(obj)) {
 
 				props.push_back(PropertyInfo(Variant::NIL, "Script Variables", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_CATEGORY));
-				obj->cast_to<Script>()->get_script_property_list(&props);
+				Object::cast_to<Script>(obj)->get_script_property_list(&props);
 			}
 
 			StringName base = base_type;
@@ -135,11 +132,9 @@ void PropertySelector::_update_search() {
 			Control::get_icon("MiniMatrix3", "EditorIcons"),
 			Control::get_icon("MiniTransform", "EditorIcons"),
 			Control::get_icon("MiniColor", "EditorIcons"),
-			Control::get_icon("MiniImage", "EditorIcons"),
 			Control::get_icon("MiniPath", "EditorIcons"),
 			Control::get_icon("MiniRid", "EditorIcons"),
 			Control::get_icon("MiniObject", "EditorIcons"),
-			Control::get_icon("MiniInput", "EditorIcons"),
 			Control::get_icon("MiniDictionary", "EditorIcons"),
 			Control::get_icon("MiniArray", "EditorIcons"),
 			Control::get_icon("MiniRawArray", "EditorIcons"),
@@ -172,7 +167,7 @@ void PropertySelector::_update_search() {
 				continue;
 			}
 
-			if (!(E->get().usage & PROPERTY_USAGE_EDITOR))
+			if (!(E->get().usage & PROPERTY_USAGE_EDITOR) && !(E->get().usage & PROPERTY_USAGE_SCRIPT_VARIABLE))
 				continue;
 
 			if (search_box->get_text() != String() && E->get().name.find(search_box->get_text()) == -1)
@@ -205,10 +200,10 @@ void PropertySelector::_update_search() {
 		} else {
 
 			Object *obj = ObjectDB::get_instance(script);
-			if (obj && obj->cast_to<Script>()) {
+			if (Object::cast_to<Script>(obj)) {
 
 				methods.push_back(MethodInfo("*Script Methods"));
-				obj->cast_to<Script>()->get_script_method_list(&methods);
+				Object::cast_to<Script>(obj)->get_script_method_list(&methods);
 			}
 
 			StringName base = base_type;
@@ -325,22 +320,7 @@ void PropertySelector::_item_selected() {
 	String name = item->get_metadata(0);
 
 	String class_type;
-	if (properties && type == Variant::INPUT_EVENT) {
-
-		switch (event_type) {
-			case InputEvent::NONE: class_type = "InputEvent"; break;
-			case InputEvent::KEY: class_type = "InputEventKey"; break;
-			case InputEvent::MOUSE_MOTION: class_type = "InputEventMouseMotion"; break;
-			case InputEvent::MOUSE_BUTTON: class_type = "InputEventMouseButton"; break;
-			case InputEvent::JOYPAD_MOTION: class_type = "InputEventJoypadMotion"; break;
-			case InputEvent::JOYPAD_BUTTON: class_type = "InputEventJoypadButton"; break;
-			case InputEvent::SCREEN_TOUCH: class_type = "InputEventScreenTouch"; break;
-			case InputEvent::SCREEN_DRAG: class_type = "InputEventScreenDrag"; break;
-			case InputEvent::ACTION: class_type = "InputEventAction"; break;
-			default: {}
-		}
-
-	} else if (type) {
+	if (type) {
 		class_type = Variant::get_type_name(type);
 
 	} else {
@@ -438,7 +418,7 @@ void PropertySelector::select_method_from_script(const Ref<Script> &p_script, co
 	base_type = p_script->get_instance_base_type();
 	selected = p_current;
 	type = Variant::NIL;
-	script = p_script->get_instance_ID();
+	script = p_script->get_instance_id();
 	properties = false;
 	instance = NULL;
 
@@ -472,7 +452,7 @@ void PropertySelector::select_method_from_instance(Object *p_instance, const Str
 	{
 		Ref<Script> scr = p_instance->get_script();
 		if (scr.is_valid())
-			script = scr->get_instance_ID();
+			script = scr->get_instance_id();
 	}
 	properties = false;
 	instance = NULL;
@@ -505,7 +485,7 @@ void PropertySelector::select_property_from_script(const Ref<Script> &p_script, 
 	base_type = p_script->get_instance_base_type();
 	selected = p_current;
 	type = Variant::NIL;
-	script = p_script->get_instance_ID();
+	script = p_script->get_instance_id();
 	properties = true;
 	instance = NULL;
 
@@ -514,13 +494,12 @@ void PropertySelector::select_property_from_script(const Ref<Script> &p_script, 
 	search_box->grab_focus();
 	_update_search();
 }
-void PropertySelector::select_property_from_basic_type(Variant::Type p_type, InputEvent::Type p_event_type, const String &p_current) {
+void PropertySelector::select_property_from_basic_type(Variant::Type p_type, const String &p_current) {
 
 	ERR_FAIL_COND(p_type == Variant::NIL);
 	base_type = "";
 	selected = p_current;
 	type = p_type;
-	event_type = p_event_type;
 	script = 0;
 	properties = true;
 	instance = NULL;

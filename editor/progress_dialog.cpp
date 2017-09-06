@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -154,9 +155,10 @@ void ProgressDialog::_popup() {
 
 	Ref<StyleBox> style = get_stylebox("panel", "PopupMenu");
 	ms += style->get_minimum_size();
-	for (int i = 0; i < 4; i++) {
-		main->set_margin(Margin(i), style->get_margin(Margin(i)));
-	}
+	main->set_margin(MARGIN_LEFT, style->get_margin(MARGIN_LEFT));
+	main->set_margin(MARGIN_RIGHT, -style->get_margin(MARGIN_RIGHT));
+	main->set_margin(MARGIN_TOP, style->get_margin(MARGIN_TOP));
+	main->set_margin(MARGIN_BOTTOM, -style->get_margin(MARGIN_BOTTOM));
 
 	popup_centered(ms);
 }

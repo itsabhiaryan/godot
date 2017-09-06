@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -94,6 +95,16 @@ float GIProbeData::get_bias() const {
 	return VS::get_singleton()->gi_probe_get_bias(probe);
 }
 
+void GIProbeData::set_normal_bias(float p_range) {
+
+	VS::get_singleton()->gi_probe_set_normal_bias(probe, p_range);
+}
+
+float GIProbeData::get_normal_bias() const {
+
+	return VS::get_singleton()->gi_probe_get_normal_bias(probe);
+}
+
 void GIProbeData::set_propagation(float p_range) {
 
 	VS::get_singleton()->gi_probe_set_propagation(probe, p_range);
@@ -157,6 +168,9 @@ void GIProbeData::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_bias", "bias"), &GIProbeData::set_bias);
 	ClassDB::bind_method(D_METHOD("get_bias"), &GIProbeData::get_bias);
 
+	ClassDB::bind_method(D_METHOD("set_normal_bias", "bias"), &GIProbeData::set_normal_bias);
+	ClassDB::bind_method(D_METHOD("get_normal_bias"), &GIProbeData::get_normal_bias);
+
 	ClassDB::bind_method(D_METHOD("set_propagation", "propagation"), &GIProbeData::set_propagation);
 	ClassDB::bind_method(D_METHOD("get_propagation"), &GIProbeData::get_propagation);
 
@@ -174,6 +188,7 @@ void GIProbeData::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "dynamic_range", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "set_dynamic_range", "get_dynamic_range");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "energy", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "set_energy", "get_energy");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "bias", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "set_bias", "get_bias");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "normal_bias", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "set_normal_bias", "get_normal_bias");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "propagation", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "set_propagation", "get_propagation");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "interior", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "set_interior", "is_interior");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "compress", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "set_compress", "is_compressed");
@@ -262,6 +277,18 @@ void GIProbe::set_bias(float p_bias) {
 float GIProbe::get_bias() const {
 
 	return bias;
+}
+
+void GIProbe::set_normal_bias(float p_normal_bias) {
+
+	normal_bias = p_normal_bias;
+	if (probe_data.is_valid()) {
+		probe_data->set_normal_bias(normal_bias);
+	}
+}
+float GIProbe::get_normal_bias() const {
+
+	return normal_bias;
 }
 
 void GIProbe::set_propagation(float p_propagation) {
@@ -521,8 +548,8 @@ void GIProbe::_plot_face(int p_idx, int p_level, int p_x, int p_y, int p_z, cons
 		//plot the face by guessing it's albedo and emission value
 
 		//find best axis to map to, for scanning values
-		int closest_axis;
-		float closest_dot;
+		int closest_axis = 0;
+		float closest_dot = 0;
 
 		Plane plane = Plane(p_vtx[0], p_vtx[1], p_vtx[2]);
 		Vector3 normal = plane.normal;
@@ -563,7 +590,7 @@ void GIProbe::_plot_face(int p_idx, int p_level, int p_x, int p_y, int p_z, cons
 
 				Vector3 ofs_j = float(j) * t2;
 
-				Vector3 from = p_aabb.pos + ofs_i + ofs_j;
+				Vector3 from = p_aabb.position + ofs_i + ofs_j;
 				Vector3 to = from + t1 + t2 + axis * p_aabb.size[closest_axis];
 				Vector3 half = (to - from) * 0.5;
 
@@ -618,7 +645,7 @@ void GIProbe::_plot_face(int p_idx, int p_level, int p_x, int p_y, int p_z, cons
 			//could not in any way get texture information.. so use closest point to center
 
 			Face3 f(p_vtx[0], p_vtx[1], p_vtx[2]);
-			Vector3 inters = f.get_closest_point_to(p_aabb.pos + p_aabb.size * 0.5);
+			Vector3 inters = f.get_closest_point_to(p_aabb.position + p_aabb.size * 0.5);
 
 			Vector2 uv = get_uv(inters, p_vtx, p_uv);
 
@@ -699,15 +726,15 @@ void GIProbe::_plot_face(int p_idx, int p_level, int p_x, int p_y, int p_z, cons
 			int nz = p_z;
 
 			if (i & 1) {
-				aabb.pos.x += aabb.size.x;
+				aabb.position.x += aabb.size.x;
 				nx += half;
 			}
 			if (i & 2) {
-				aabb.pos.y += aabb.size.y;
+				aabb.position.y += aabb.size.y;
 				ny += half;
 			}
 			if (i & 4) {
-				aabb.pos.z += aabb.size.z;
+				aabb.position.z += aabb.size.z;
 				nz += half;
 			}
 			//make sure to not plot beyond limits
@@ -719,7 +746,7 @@ void GIProbe::_plot_face(int p_idx, int p_level, int p_x, int p_y, int p_z, cons
 				//test_aabb.grow_by(test_aabb.get_longest_axis_size()*0.05); //grow a bit to avoid numerical error in real-time
 				Vector3 qsize = test_aabb.size * 0.5; //quarter size, for fast aabb test
 
-				if (!fast_tri_box_overlap(test_aabb.pos + qsize, qsize, p_vtx)) {
+				if (!fast_tri_box_overlap(test_aabb.position + qsize, qsize, p_vtx)) {
 					//if (!Face3(p_vtx[0],p_vtx[1],p_vtx[2]).intersects_aabb2(aabb)) {
 					//does not fit in child, go on
 					continue;
@@ -880,11 +907,11 @@ void GIProbe::_fixup_plot(int p_idx, int p_level, int p_x, int p_y, int p_z, Bak
 	}
 }
 
-Vector<Color> GIProbe::_get_bake_texture(Image &p_image, const Color &p_color) {
+Vector<Color> GIProbe::_get_bake_texture(Ref<Image> p_image, const Color &p_color) {
 
 	Vector<Color> ret;
 
-	if (p_image.empty()) {
+	if (p_image.is_null() || p_image->empty()) {
 
 		ret.resize(bake_texture_size * bake_texture_size);
 		for (int i = 0; i < bake_texture_size * bake_texture_size; i++) {
@@ -893,23 +920,26 @@ Vector<Color> GIProbe::_get_bake_texture(Image &p_image, const Color &p_color) {
 
 		return ret;
 	}
+	p_image = p_image->duplicate();
 
-	if (p_image.is_compressed()) {
+	if (p_image->is_compressed()) {
 		print_line("DECOMPRESSING!!!!");
-		p_image.decompress();
-	}
-	p_image.convert(Image::FORMAT_RGBA8);
-	p_image.resize(bake_texture_size, bake_texture_size, Image::INTERPOLATE_CUBIC);
 
-	PoolVector<uint8_t>::Read r = p_image.get_data().read();
+		p_image->decompress();
+	}
+	p_image->convert(Image::FORMAT_RGBA8);
+	p_image->resize(bake_texture_size, bake_texture_size, Image::INTERPOLATE_CUBIC);
+
+	PoolVector<uint8_t>::Read r = p_image->get_data().read();
 	ret.resize(bake_texture_size * bake_texture_size);
 
 	for (int i = 0; i < bake_texture_size * bake_texture_size; i++) {
 		Color c;
-		c.r = r[i * 4 + 0] / 255.0;
-		c.g = r[i * 4 + 1] / 255.0;
-		c.b = r[i * 4 + 2] / 255.0;
+		c.r = (r[i * 4 + 0] / 255.0) * p_color.r;
+		c.g = (r[i * 4 + 1] / 255.0) * p_color.g;
+		c.b = (r[i * 4 + 2] / 255.0) * p_color.b;
 		c.a = r[i * 4 + 3] / 255.0;
+
 		ret[i] = c;
 	}
 
@@ -919,7 +949,7 @@ Vector<Color> GIProbe::_get_bake_texture(Image &p_image, const Color &p_color) {
 GIProbe::Baker::MaterialCache GIProbe::_get_material_cache(Ref<Material> p_material, Baker *p_baker) {
 
 	//this way of obtaining materials is inaccurate and also does not support some compressed formats very well
-	Ref<FixedSpatialMaterial> mat = p_material;
+	Ref<SpatialMaterial> mat = p_material;
 
 	Ref<Material> material = mat; //hack for now
 
@@ -931,9 +961,9 @@ GIProbe::Baker::MaterialCache GIProbe::_get_material_cache(Ref<Material> p_mater
 
 	if (mat.is_valid()) {
 
-		Ref<Texture> albedo_tex = mat->get_texture(FixedSpatialMaterial::TEXTURE_ALBEDO);
+		Ref<Texture> albedo_tex = mat->get_texture(SpatialMaterial::TEXTURE_ALBEDO);
 
-		Image img_albedo;
+		Ref<Image> img_albedo;
 		if (albedo_tex.is_valid()) {
 
 			img_albedo = albedo_tex->get_data();
@@ -942,14 +972,14 @@ GIProbe::Baker::MaterialCache GIProbe::_get_material_cache(Ref<Material> p_mater
 
 		mc.albedo = _get_bake_texture(img_albedo, mat->get_albedo());
 
-		Ref<ImageTexture> emission_tex = mat->get_texture(FixedSpatialMaterial::TEXTURE_EMISSION);
+		Ref<ImageTexture> emission_tex = mat->get_texture(SpatialMaterial::TEXTURE_EMISSION);
 
 		Color emission_col = mat->get_emission();
 		emission_col.r *= mat->get_emission_energy();
 		emission_col.g *= mat->get_emission_energy();
 		emission_col.b *= mat->get_emission_energy();
 
-		Image img_emission;
+		Ref<Image> img_emission;
 
 		if (emission_tex.is_valid()) {
 
@@ -959,7 +989,7 @@ GIProbe::Baker::MaterialCache GIProbe::_get_material_cache(Ref<Material> p_mater
 		mc.emission = _get_bake_texture(img_emission, emission_col);
 
 	} else {
-		Image empty;
+		Ref<Image> empty;
 
 		mc.albedo = _get_bake_texture(empty, Color(0.7, 0.7, 0.7));
 		mc.emission = _get_bake_texture(empty, Color(0, 0, 0));
@@ -1061,7 +1091,7 @@ void GIProbe::_plot_mesh(const Transform &p_xform, Ref<Mesh> &p_mesh, Baker *p_b
 
 void GIProbe::_find_meshes(Node *p_at_node, Baker *p_baker) {
 
-	MeshInstance *mi = p_at_node->cast_to<MeshInstance>();
+	MeshInstance *mi = Object::cast_to<MeshInstance>(p_at_node);
 	if (mi && mi->get_flag(GeometryInstance::FLAG_USE_BAKED_LIGHT)) {
 		Ref<Mesh> mesh = mi->get_mesh();
 		if (mesh.is_valid()) {
@@ -1083,9 +1113,8 @@ void GIProbe::_find_meshes(Node *p_at_node, Baker *p_baker) {
 		}
 	}
 
-	if (p_at_node->cast_to<Spatial>()) {
+	if (Spatial *s = Object::cast_to<Spatial>(p_at_node)) {
 
-		Spatial *s = p_at_node->cast_to<Spatial>();
 		Array meshes = p_at_node->call("get_meshes");
 		for (int i = 0; i < meshes.size(); i += 2) {
 
@@ -1151,7 +1180,7 @@ void GIProbe::bake(Node *p_from_node, bool p_create_visual_debug) {
 
 	Transform to_bounds;
 	to_bounds.basis.scale(Vector3(baker.po2_bounds.size[longest_axis], baker.po2_bounds.size[longest_axis], baker.po2_bounds.size[longest_axis]));
-	to_bounds.origin = baker.po2_bounds.pos;
+	to_bounds.origin = baker.po2_bounds.position;
 
 	Transform to_grid;
 	to_grid.basis.scale(Vector3(baker.axis_cell_size[longest_axis], baker.axis_cell_size[longest_axis], baker.axis_cell_size[longest_axis]));
@@ -1257,6 +1286,7 @@ void GIProbe::bake(Node *p_from_node, bool p_create_visual_debug) {
 		probe_data->set_dynamic_range(dynamic_range);
 		probe_data->set_energy(energy);
 		probe_data->set_bias(bias);
+		probe_data->set_normal_bias(normal_bias);
 		probe_data->set_propagation(propagation);
 		probe_data->set_interior(interior);
 		probe_data->set_compress(compress);
@@ -1270,12 +1300,13 @@ void GIProbe::_debug_mesh(int p_idx, int p_level, const Rect3 &p_aabb, Ref<Multi
 
 	if (p_level == p_baker->cell_subdiv - 1) {
 
-		Vector3 center = p_aabb.pos + p_aabb.size * 0.5;
+		Vector3 center = p_aabb.position + p_aabb.size * 0.5;
 		Transform xform;
 		xform.origin = center;
 		xform.basis.scale(p_aabb.size * 0.5);
 		p_multimesh->set_instance_transform(idx, xform);
 		Color col = Color(p_baker->bake_cells[p_idx].albedo[0], p_baker->bake_cells[p_idx].albedo[1], p_baker->bake_cells[p_idx].albedo[2]);
+		//Color col = Color(p_baker->bake_cells[p_idx].emission[0], p_baker->bake_cells[p_idx].emission[1], p_baker->bake_cells[p_idx].emission[2]);
 		p_multimesh->set_instance_color(idx, col);
 
 		idx++;
@@ -1291,11 +1322,11 @@ void GIProbe::_debug_mesh(int p_idx, int p_level, const Rect3 &p_aabb, Ref<Multi
 			aabb.size *= 0.5;
 
 			if (i & 1)
-				aabb.pos.x += aabb.size.x;
+				aabb.position.x += aabb.size.x;
 			if (i & 2)
-				aabb.pos.y += aabb.size.y;
+				aabb.position.y += aabb.size.y;
 			if (i & 4)
-				aabb.pos.z += aabb.size.z;
+				aabb.position.z += aabb.size.z;
 
 			_debug_mesh(p_baker->bake_cells[p_idx].childs[i], p_level + 1, aabb, p_multimesh, idx, p_baker);
 		}
@@ -1312,7 +1343,7 @@ void GIProbe::_create_debug_mesh(Baker *p_baker) {
 	print_line("leaf voxels: " + itos(p_baker->leaf_voxel_count));
 	mm->set_instance_count(p_baker->leaf_voxel_count);
 
-	Ref<Mesh> mesh;
+	Ref<ArrayMesh> mesh;
 	mesh.instance();
 
 	{
@@ -1365,11 +1396,11 @@ void GIProbe::_create_debug_mesh(Baker *p_baker) {
 	}
 
 	{
-		Ref<FixedSpatialMaterial> fsm;
+		Ref<SpatialMaterial> fsm;
 		fsm.instance();
-		fsm->set_flag(FixedSpatialMaterial::FLAG_SRGB_VERTEX_COLOR, true);
-		fsm->set_flag(FixedSpatialMaterial::FLAG_ALBEDO_FROM_VERTEX_COLOR, true);
-		fsm->set_flag(FixedSpatialMaterial::FLAG_UNSHADED, true);
+		fsm->set_flag(SpatialMaterial::FLAG_SRGB_VERTEX_COLOR, true);
+		fsm->set_flag(SpatialMaterial::FLAG_ALBEDO_FROM_VERTEX_COLOR, true);
+		fsm->set_flag(SpatialMaterial::FLAG_UNSHADED, true);
 		fsm->set_albedo(Color(1, 1, 1, 1));
 
 		mesh->surface_set_material(0, fsm);
@@ -1429,6 +1460,9 @@ void GIProbe::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_bias", "max"), &GIProbe::set_bias);
 	ClassDB::bind_method(D_METHOD("get_bias"), &GIProbe::get_bias);
 
+	ClassDB::bind_method(D_METHOD("set_normal_bias", "max"), &GIProbe::set_normal_bias);
+	ClassDB::bind_method(D_METHOD("get_normal_bias"), &GIProbe::get_normal_bias);
+
 	ClassDB::bind_method(D_METHOD("set_propagation", "max"), &GIProbe::set_propagation);
 	ClassDB::bind_method(D_METHOD("get_propagation"), &GIProbe::get_propagation);
 
@@ -1448,14 +1482,15 @@ void GIProbe::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "energy", PROPERTY_HINT_RANGE, "0,16,0.01"), "set_energy", "get_energy");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "propagation", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_propagation", "get_propagation");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "bias", PROPERTY_HINT_RANGE, "0,4,0.001"), "set_bias", "get_bias");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "normal_bias", PROPERTY_HINT_RANGE, "0,4,0.001"), "set_normal_bias", "get_normal_bias");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "interior"), "set_interior", "is_interior");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "compress"), "set_compress", "is_compressed");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "data", PROPERTY_HINT_RESOURCE_TYPE, "GIProbeData"), "set_probe_data", "get_probe_data");
 
-	BIND_CONSTANT(SUBDIV_64);
-	BIND_CONSTANT(SUBDIV_128);
-	BIND_CONSTANT(SUBDIV_256);
-	BIND_CONSTANT(SUBDIV_MAX);
+	BIND_ENUM_CONSTANT(SUBDIV_64);
+	BIND_ENUM_CONSTANT(SUBDIV_128);
+	BIND_ENUM_CONSTANT(SUBDIV_256);
+	BIND_ENUM_CONSTANT(SUBDIV_MAX);
 }
 
 GIProbe::GIProbe() {
@@ -1463,7 +1498,8 @@ GIProbe::GIProbe() {
 	subdiv = SUBDIV_128;
 	dynamic_range = 4;
 	energy = 1.0;
-	bias = 0.4;
+	bias = 0.0;
+	normal_bias = 0.8;
 	propagation = 1.0;
 	extents = Vector3(10, 10, 10);
 	color_scan_cell_width = 4;

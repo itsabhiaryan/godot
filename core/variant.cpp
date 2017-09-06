@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -119,11 +120,6 @@ String Variant::get_type_name(Variant::Type p_type) {
 			return "Color";
 
 		} break;
-		case IMAGE: {
-
-			return "Image";
-
-		} break;
 		case _RID: {
 
 			return "RID";
@@ -135,11 +131,6 @@ String Variant::get_type_name(Variant::Type p_type) {
 		case NODE_PATH: {
 
 			return "NodePath";
-
-		} break;
-		case INPUT_EVENT: {
-
-			return "InputEvent";
 
 		} break;
 		case DICTIONARY: {
@@ -248,7 +239,6 @@ bool Variant::can_convert(Variant::Type p_type_from, Variant::Type p_type_to) {
 
 			static const Type invalid[] = {
 				OBJECT,
-				IMAGE,
 				NIL
 			};
 
@@ -790,11 +780,6 @@ bool Variant::is_zero() const {
 			return *reinterpret_cast<const Color *>(_data._mem) == Color();
 
 		} break;
-		case IMAGE: {
-
-			return _data._image->empty();
-
-		} break;
 		case _RID: {
 
 			return *reinterpret_cast<const RID *>(_data._mem) == RID();
@@ -806,11 +791,6 @@ bool Variant::is_zero() const {
 		case NODE_PATH: {
 
 			return reinterpret_cast<const NodePath *>(_data._mem)->is_empty();
-
-		} break;
-		case INPUT_EVENT: {
-
-			return _data._input_event->type == InputEvent::NONE;
 
 		} break;
 		case DICTIONARY: {
@@ -1015,11 +995,6 @@ void Variant::reference(const Variant &p_variant) {
 			memnew_placement(_data._mem, Color(*reinterpret_cast<const Color *>(p_variant._data._mem)));
 
 		} break;
-		case IMAGE: {
-
-			_data._image = memnew(Image(*p_variant._data._image));
-
-		} break;
 		case _RID: {
 
 			memnew_placement(_data._mem, RID(*reinterpret_cast<const RID *>(p_variant._data._mem)));
@@ -1031,11 +1006,6 @@ void Variant::reference(const Variant &p_variant) {
 		case NODE_PATH: {
 
 			memnew_placement(_data._mem, NodePath(*reinterpret_cast<const NodePath *>(p_variant._data._mem)));
-
-		} break;
-		case INPUT_EVENT: {
-
-			_data._input_event = memnew(InputEvent(*p_variant._data._input_event));
 
 		} break;
 		case DICTIONARY: {
@@ -1140,11 +1110,6 @@ void Variant::clear() {
 		} break;
 
 		// misc types
-		case IMAGE: {
-
-			memdelete(_data._image);
-
-		} break;
 		case NODE_PATH: {
 
 			reinterpret_cast<NodePath *>(_data._mem)->~NodePath();
@@ -1169,12 +1134,6 @@ void Variant::clear() {
 			reinterpret_cast<Array *>(_data._mem)->~Array();
 
 		} break;
-		case INPUT_EVENT: {
-
-			memdelete(_data._input_event);
-
-		} break;
-
 		// arrays
 		case POOL_BYTE_ARRAY: {
 
@@ -1523,7 +1482,6 @@ Variant::operator String() const {
 		} break;
 		case TRANSFORM: return operator Transform();
 		case NODE_PATH: return operator NodePath();
-		case INPUT_EVENT: return operator InputEvent();
 		case COLOR: return String::num(operator Color().r) + "," + String::num(operator Color().g) + "," + String::num(operator Color().b) + "," + String::num(operator Color().a);
 		case DICTIONARY: {
 
@@ -1642,7 +1600,7 @@ Variant::operator String() const {
 					};
 				};
 #endif
-				return "[" + _get_obj().obj->get_class() + ":" + itos(_get_obj().obj->get_instance_ID()) + "]";
+				return "[" + _get_obj().obj->get_class() + ":" + itos(_get_obj().obj->get_instance_id()) + "]";
 			} else
 				return "[Object:null]";
 
@@ -1759,13 +1717,6 @@ Variant::operator Color() const {
 	else
 		return Color();
 }
-Variant::operator Image() const {
-
-	if (type == IMAGE)
-		return *_data._image;
-	else
-		return Image();
-}
 
 Variant::operator NodePath() const {
 
@@ -1813,24 +1764,16 @@ Variant::operator Object *() const {
 Variant::operator Node *() const {
 
 	if (type == OBJECT)
-		return _get_obj().obj ? _get_obj().obj->cast_to<Node>() : NULL;
+		return Object::cast_to<Node>(_get_obj().obj);
 	else
 		return NULL;
 }
 Variant::operator Control *() const {
 
 	if (type == OBJECT)
-		return _get_obj().obj ? _get_obj().obj->cast_to<Control>() : NULL;
+		return Object::cast_to<Control>(_get_obj().obj);
 	else
 		return NULL;
-}
-
-Variant::operator InputEvent() const {
-
-	if (type == INPUT_EVENT)
-		return *reinterpret_cast<const InputEvent *>(_data._input_event);
-	else
-		return InputEvent();
 }
 
 Variant::operator Dictionary() const {
@@ -2305,22 +2248,11 @@ Variant::Variant(const Color &p_color) {
 	type = COLOR;
 	memnew_placement(_data._mem, Color(p_color));
 }
-Variant::Variant(const Image &p_image) {
-
-	type = IMAGE;
-	_data._image = memnew(Image(p_image));
-}
 
 Variant::Variant(const NodePath &p_node_path) {
 
 	type = NODE_PATH;
 	memnew_placement(_data._mem, NodePath(p_node_path));
-}
-
-Variant::Variant(const InputEvent &p_input_event) {
-
-	type = INPUT_EVENT;
-	_data._input_event = memnew(InputEvent(p_input_event));
 }
 
 Variant::Variant(const RefPtr &p_resource) {
@@ -2617,8 +2549,8 @@ uint32_t Variant::hash() const {
 		} break;
 		case RECT2: {
 
-			uint32_t hash = hash_djb2_one_float(reinterpret_cast<const Rect2 *>(_data._mem)->pos.x);
-			hash = hash_djb2_one_float(reinterpret_cast<const Rect2 *>(_data._mem)->pos.y, hash);
+			uint32_t hash = hash_djb2_one_float(reinterpret_cast<const Rect2 *>(_data._mem)->position.x);
+			hash = hash_djb2_one_float(reinterpret_cast<const Rect2 *>(_data._mem)->position.y, hash);
 			hash = hash_djb2_one_float(reinterpret_cast<const Rect2 *>(_data._mem)->size.x, hash);
 			return hash_djb2_one_float(reinterpret_cast<const Rect2 *>(_data._mem)->size.y, hash);
 		} break;
@@ -2658,7 +2590,7 @@ uint32_t Variant::hash() const {
 			uint32_t hash = 5831;
 			for (int i = 0; i < 3; i++) {
 
-				hash = hash_djb2_one_float(_data._rect3->pos[i], hash);
+				hash = hash_djb2_one_float(_data._rect3->position[i], hash);
 				hash = hash_djb2_one_float(_data._rect3->size[i], hash);
 			}
 
@@ -2710,11 +2642,6 @@ uint32_t Variant::hash() const {
 			return hash_djb2_one_float(reinterpret_cast<const Color *>(_data._mem)->a, hash);
 
 		} break;
-		case IMAGE: {
-
-			return 0;
-
-		} break;
 		case _RID: {
 
 			return hash_djb2_one_64(reinterpret_cast<const RID *>(_data._mem)->get_id());
@@ -2726,11 +2653,6 @@ uint32_t Variant::hash() const {
 		case NODE_PATH: {
 
 			return reinterpret_cast<const NodePath *>(_data._mem)->hash();
-		} break;
-		case INPUT_EVENT: {
-
-			return hash_djb2_buffer((uint8_t *)_data._input_event, sizeof(InputEvent));
-
 		} break;
 		case DICTIONARY: {
 
@@ -2838,7 +2760,7 @@ uint32_t Variant::hash() const {
 }
 
 #define hash_compare_scalar(p_lhs, p_rhs) \
-	((p_lhs) == (p_rhs)) || (Math::is_nan(p_lhs) == Math::is_nan(p_rhs))
+	((p_lhs) == (p_rhs)) || (Math::is_nan(p_lhs) && Math::is_nan(p_rhs))
 
 #define hash_compare_vector2(p_lhs, p_rhs)         \
 	(hash_compare_scalar((p_lhs).x, (p_rhs).x)) && \
@@ -2898,7 +2820,7 @@ bool Variant::hash_compare(const Variant &p_variant) const {
 			const Rect2 *l = reinterpret_cast<const Rect2 *>(_data._mem);
 			const Rect2 *r = reinterpret_cast<const Rect2 *>(p_variant._data._mem);
 
-			return (hash_compare_vector2(l->pos, r->pos)) &&
+			return (hash_compare_vector2(l->position, r->position)) &&
 				   (hash_compare_vector2(l->size, r->size));
 		} break;
 
@@ -2933,7 +2855,7 @@ bool Variant::hash_compare(const Variant &p_variant) const {
 			const Rect3 *l = _data._rect3;
 			const Rect3 *r = p_variant._data._rect3;
 
-			return (hash_compare_vector3(l->pos, r->pos) &&
+			return (hash_compare_vector3(l->position, r->position) &&
 					(hash_compare_vector3(l->size, r->size)));
 
 		} break;

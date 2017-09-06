@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -29,7 +30,7 @@
 #ifndef PROJECT_MANAGER_H
 #define PROJECT_MANAGER_H
 
-#include "editor/asset_library_editor_plugin.h"
+#include "editor/plugins/asset_library_editor_plugin.h"
 #include "scene/gui/dialogs.h"
 #include "scene/gui/file_dialog.h"
 #include "scene/gui/scroll_container.h"
@@ -56,6 +57,7 @@ class ProjectManager : public Control {
 	ConfirmationDialog *multi_open_ask;
 	ConfirmationDialog *multi_run_ask;
 	ConfirmationDialog *multi_scan_ask;
+	AcceptDialog *run_error_diag;
 	NewProjectDialog *npdialog;
 	ScrollContainer *scroll;
 	VBoxContainer *scroll_childs;
@@ -90,8 +92,8 @@ class ProjectManager : public Control {
 	void _install_project(const String &p_zip_path, const String &p_title);
 
 	void _panel_draw(Node *p_hb);
-	void _panel_input(const InputEvent &p_ev, Node *p_hb);
-	void _unhandled_input(const InputEvent &p_ev);
+	void _panel_input(const Ref<InputEvent> &p_ev, Node *p_hb);
+	void _unhandled_input(const Ref<InputEvent> &p_ev);
 	void _favorite_pressed(Node *p_hb);
 	void _files_dropped(PoolStringArray p_files, int p_screen);
 	void _scan_multiple_folders(PoolStringArray p_files);

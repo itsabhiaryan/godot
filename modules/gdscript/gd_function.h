@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -209,8 +210,9 @@ public:
 #ifdef TOOLS_ENABLED
 		ERR_FAIL_INDEX_V(p_idx, arg_names.size(), StringName());
 		return arg_names[p_idx];
-#endif
+#else
 		return StringName();
+#endif
 	}
 	Variant get_default_argument(int p_idx) const {
 		ERR_FAIL_INDEX_V(p_idx, default_arguments.size(), Variant());
@@ -236,7 +238,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	bool is_valid() const;
+	bool is_valid(bool p_extended_check = false) const;
 	Variant resume(const Variant &p_arg = Variant());
 	GDFunctionState();
 	~GDFunctionState();

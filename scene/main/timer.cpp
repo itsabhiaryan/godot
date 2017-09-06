@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -28,6 +29,8 @@
 /*************************************************************************/
 #include "timer.h"
 
+#include "engine.h"
+
 void Timer::_notification(int p_what) {
 
 	switch (p_what) {
@@ -36,7 +39,7 @@ void Timer::_notification(int p_what) {
 
 			if (autostart) {
 #ifdef TOOLS_ENABLED
-				if (get_tree()->is_editor_hint() && get_tree()->get_edited_scene_root() && (get_tree()->get_edited_scene_root() == this || get_tree()->get_edited_scene_root()->is_a_parent_of(this)))
+				if (Engine::get_singleton()->is_editor_hint() && get_tree()->get_edited_scene_root() && (get_tree()->get_edited_scene_root() == this || get_tree()->get_edited_scene_root()->is_a_parent_of(this)))
 					break;
 #endif
 				start();
@@ -50,8 +53,7 @@ void Timer::_notification(int p_what) {
 
 			if (time_left < 0) {
 				if (!one_shot)
-					//time_left=wait_time+time_left;
-					time_left = wait_time;
+					time_left += wait_time;
 				else
 					stop();
 
@@ -66,7 +68,7 @@ void Timer::_notification(int p_what) {
 
 			if (time_left < 0) {
 				if (!one_shot)
-					time_left = wait_time + time_left;
+					time_left += wait_time;
 				else
 					stop();
 				emit_signal("timeout");
@@ -202,8 +204,8 @@ void Timer::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "one_shot"), "set_one_shot", "is_one_shot");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "autostart"), "set_autostart", "has_autostart");
 
-	BIND_CONSTANT(TIMER_PROCESS_FIXED);
-	BIND_CONSTANT(TIMER_PROCESS_IDLE);
+	BIND_ENUM_CONSTANT(TIMER_PROCESS_FIXED);
+	BIND_ENUM_CONSTANT(TIMER_PROCESS_IDLE);
 }
 
 Timer::Timer() {

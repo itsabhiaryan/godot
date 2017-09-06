@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -71,14 +72,24 @@ class VisualScriptEditor : public ScriptEditorBase {
 		CREATE_RETURN,
 	};
 
+	enum MemberAction {
+		MEMBER_EDIT,
+		MEMBER_REMOVE
+
+	};
+
+	enum MemberType {
+		MEMBER_FUNCTION,
+		MEMBER_VARIABLE,
+		MEMBER_SIGNAL
+	};
+
+	VSplitContainer *left_vsplit;
 	MenuButton *edit_menu;
 
 	Ref<VisualScript> script;
 
 	Button *base_type_select;
-
-	HSplitContainer *main_hsplit;
-	VSplitContainer *left_vsplit;
 
 	GraphEdit *graph;
 
@@ -153,6 +164,10 @@ class VisualScriptEditor : public ScriptEditorBase {
 	static Clipboard *clipboard;
 
 	PopupMenu *port_action_popup;
+	PopupMenu *member_popup;
+
+	MemberType member_type;
+	String member_name;
 
 	PortAction port_action;
 	int port_action_node;
@@ -161,6 +176,7 @@ class VisualScriptEditor : public ScriptEditorBase {
 	int port_action_new_node;
 	void _port_action_menu(int p_option);
 	void _selected_connect_node_method_or_setget(const String &p_text);
+	void _cancel_connect_node_method_or_setget();
 
 	int error_line;
 
@@ -195,7 +211,7 @@ class VisualScriptEditor : public ScriptEditorBase {
 
 	String revert_on_drag;
 
-	void _input(const InputEvent &p_event);
+	void _input(const Ref<InputEvent> &p_event);
 	void _on_nodes_delete();
 	void _on_nodes_duplicate();
 
@@ -222,6 +238,9 @@ class VisualScriptEditor : public ScriptEditorBase {
 
 	VisualScriptNode::TypeGuess _guess_output_type(int p_port_action_node, int p_port_action_output, Set<int> &visited_nodes);
 
+	void _member_rmb_selected(const Vector2 &p_pos);
+	void _member_option(int p_option);
+
 protected:
 	void _notification(int p_what);
 	static void _bind_methods();
@@ -239,16 +258,19 @@ public:
 	virtual void set_edit_state(const Variant &p_state);
 	virtual void goto_line(int p_line, bool p_with_error = false);
 	virtual void trim_trailing_whitespace();
+	virtual void convert_indent_to_spaces();
+	virtual void convert_indent_to_tabs();
 	virtual void ensure_focus();
 	virtual void tag_saved_version();
 	virtual void reload(bool p_soft);
 	virtual void get_breakpoints(List<int> *p_breakpoints);
-	virtual bool goto_method(const String &p_method);
 	virtual void add_callback(const String &p_function, PoolStringArray p_args);
 	virtual void update_settings();
+	virtual bool show_members_overview();
 	virtual void set_debugger_active(bool p_active);
 	virtual void set_tooltip_request_func(String p_method, Object *p_obj);
 	virtual Control *get_edit_menu();
+	virtual void clear_edit_menu();
 	virtual bool can_lose_focus_on_node_selection() { return false; }
 
 	static void register_editor();

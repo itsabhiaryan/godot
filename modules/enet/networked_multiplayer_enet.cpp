@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -507,7 +508,7 @@ uint32_t NetworkedMultiplayerENet::_gen_unique_id() const {
 				(uint32_t)OS::get_singleton()->get_data_dir().hash64(), hash);
 		/*
 		hash = hash_djb2_one_32(
-					(uint32_t)OS::get_singleton()->get_unique_ID().hash64(), hash );
+					(uint32_t)OS::get_singleton()->get_unique_id().hash64(), hash );
 		*/
 		hash = hash_djb2_one_32(
 				(uint32_t)((uint64_t)this), hash); //rely on aslr heap
@@ -574,6 +575,9 @@ size_t NetworkedMultiplayerENet::enet_compress(void *context, const ENetBuffer *
 		case COMPRESS_ZLIB: {
 			mode = Compression::MODE_DEFLATE;
 		} break;
+		case COMPRESS_ZSTD: {
+			mode = Compression::MODE_ZSTD;
+		} break;
 		default: { ERR_FAIL_V(0); }
 	}
 
@@ -607,6 +611,10 @@ size_t NetworkedMultiplayerENet::enet_decompress(void *context, const enet_uint8
 
 			ret = Compression::decompress(outData, outLimit, inData, inLimit, Compression::MODE_DEFLATE);
 		} break;
+		case COMPRESS_ZSTD: {
+
+			ret = Compression::decompress(outData, outLimit, inData, inLimit, Compression::MODE_ZSTD);
+		} break;
 		default: {}
 	}
 	if (ret < 0) {
@@ -628,7 +636,8 @@ void NetworkedMultiplayerENet::_setup_compressor() {
 			enet_host_compress_with_range_coder(host);
 		} break;
 		case COMPRESS_FASTLZ:
-		case COMPRESS_ZLIB: {
+		case COMPRESS_ZLIB:
+		case COMPRESS_ZSTD: {
 
 			enet_host_compress(host, &enet_compressor);
 		} break;
@@ -649,10 +658,11 @@ void NetworkedMultiplayerENet::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_compression_mode"), &NetworkedMultiplayerENet::get_compression_mode);
 	ClassDB::bind_method(D_METHOD("set_bind_ip", "ip"), &NetworkedMultiplayerENet::set_bind_ip);
 
-	BIND_CONSTANT(COMPRESS_NONE);
-	BIND_CONSTANT(COMPRESS_RANGE_CODER);
-	BIND_CONSTANT(COMPRESS_FASTLZ);
-	BIND_CONSTANT(COMPRESS_ZLIB);
+	BIND_ENUM_CONSTANT(COMPRESS_NONE);
+	BIND_ENUM_CONSTANT(COMPRESS_RANGE_CODER);
+	BIND_ENUM_CONSTANT(COMPRESS_FASTLZ);
+	BIND_ENUM_CONSTANT(COMPRESS_ZLIB);
+	BIND_ENUM_CONSTANT(COMPRESS_ZSTD);
 }
 
 NetworkedMultiplayerENet::NetworkedMultiplayerENet() {

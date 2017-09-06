@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -68,14 +69,14 @@ public:
 	virtual void print_error(const char *p_function, const char *p_file, int p_line, const char *p_code, const char *p_rationale, ErrorType p_type = ERR_ERROR);
 
 	virtual void print(const char *p_format, ...);
-	virtual void vprint(const char *p_format, va_list p_list, bool p_stderr = false);
+	virtual void vprint(const char *p_format, va_list p_list, bool p_stder = false);
 	virtual void alert(const String &p_alert, const String &p_title = "ALERT!");
 	virtual String get_stdin_string(bool p_block);
 
 	//virtual void set_mouse_show(bool p_show);
 	//virtual void set_mouse_grab(bool p_grab);
 	//virtual bool is_mouse_grab_enabled() const = 0;
-	//virtual void get_mouse_pos(int &x, int &y) const;
+	//virtual void get_mouse_position(int &x, int &y) const;
 	//virtual void set_window_title(const String& p_title);
 
 	//virtual void set_video_mode(const VideoMode& p_video_mode);
@@ -84,7 +85,7 @@ public:
 
 	virtual Error open_dynamic_library(const String p_path, void *&p_library_handle);
 	virtual Error close_dynamic_library(void *p_library_handle);
-	virtual Error get_dynamic_library_symbol_handle(void *p_library_handle, const String p_name, void *&p_symbol_handle);
+	virtual Error get_dynamic_library_symbol_handle(void *p_library_handle, const String p_name, void *&p_symbol_handle, bool p_optional = false);
 
 	virtual Error set_cwd(const String &p_cwd);
 
@@ -102,7 +103,7 @@ public:
 
 	virtual Error execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id = NULL, String *r_pipe = NULL, int *r_exitcode = NULL);
 	virtual Error kill(const ProcessID &p_pid);
-	virtual int get_process_ID() const;
+	virtual int get_process_id() const;
 
 	virtual bool has_environment(const String &p_var) const;
 	virtual String get_environment(const String &p_var) const;
@@ -115,8 +116,6 @@ public:
 	virtual String get_installed_templates_path() const;
 	virtual String get_executable_path() const;
 	virtual String get_data_dir() const;
-
-	virtual bool check_feature_support(const String &p_feature);
 
 	//virtual void run( MainLoop * p_main_loop );
 };

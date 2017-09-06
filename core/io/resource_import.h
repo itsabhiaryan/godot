@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -39,7 +40,7 @@ class ResourceFormatImporter : public ResourceFormatLoader {
 		String type;
 	};
 
-	Error _get_path_and_type(const String &p_path, PathAndType &r_path_and_type) const;
+	Error _get_path_and_type(const String &p_path, PathAndType &r_path_and_type, bool *r_valid = NULL) const;
 
 	static ResourceFormatImporter *singleton;
 
@@ -53,13 +54,16 @@ public:
 	virtual bool recognize_path(const String &p_path, const String &p_for_type = String()) const;
 	virtual bool handles_type(const String &p_type) const;
 	virtual String get_resource_type(const String &p_path) const;
+	virtual bool is_import_valid(const String &p_path) const;
 	virtual void get_dependencies(const String &p_path, List<String> *p_dependencies, bool p_add_types = false);
 
 	virtual bool can_be_imported(const String &p_path) const;
 
 	String get_internal_resource_path(const String &p_path) const;
+	void get_internal_resource_path_list(const String &p_path, List<String> *r_paths);
 
 	void add_importer(const Ref<ResourceImporter> &p_importer) { importers.insert(p_importer); }
+	void remove_importer(const Ref<ResourceImporter> &p_importer) { importers.erase(p_importer); }
 	Ref<ResourceImporter> get_importer_by_name(const String &p_name);
 	Ref<ResourceImporter> get_importer_by_extension(const String &p_extension);
 	void get_importers_for_extension(const String &p_extension, List<Ref<ResourceImporter> > *r_importers);
@@ -83,9 +87,9 @@ public:
 		PropertyInfo option;
 		Variant default_value;
 
-		ImportOption(const PropertyInfo &p_info, const Variant &p_default) {
-			option = p_info;
-			default_value = p_default;
+		ImportOption(const PropertyInfo &p_info, const Variant &p_default)
+			: option(p_info),
+			  default_value(p_default) {
 		}
 		ImportOption() {}
 	};

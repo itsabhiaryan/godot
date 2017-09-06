@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -34,7 +35,7 @@
 #include "core/io/config_file.h"
 #include "os/thread_safe.h"
 #include "resource.h"
-#include "scene/gui/input_action.h"
+#include "scene/gui/shortcut.h"
 #include "translation.h"
 
 class EditorPlugin;
@@ -144,7 +145,7 @@ public:
 
 	void add_property_hint(const PropertyInfo &p_hint);
 
-	void set_favorite_dirs(const Vector<String> &p_favorite_dirs);
+	void set_favorite_dirs(const Vector<String> &p_favorites_dirs);
 	Vector<String> get_favorite_dirs() const;
 
 	void set_recent_dirs(const Vector<String> &p_recent_dirs);
@@ -158,8 +159,10 @@ public:
 	bool save_text_editor_theme();
 	bool save_text_editor_theme_as(String p_file);
 
+	Vector<String> get_script_templates(const String &p_extension);
+
 	void add_shortcut(const String &p_name, Ref<ShortCut> &p_shortcut);
-	bool is_shortcut(const String &p_name, const InputEvent &p_event) const;
+	bool is_shortcut(const String &p_name, const Ref<InputEvent> &p_event) const;
 	Ref<ShortCut> get_shortcut(const String &p_name) const;
 	void get_shortcut_list(List<String> *r_shortcuts);
 
@@ -176,6 +179,9 @@ public:
 
 #define EDITOR_DEF(m_var, m_val) _EDITOR_DEF(m_var, Variant(m_val))
 Variant _EDITOR_DEF(const String &p_var, const Variant &p_default);
+
+#define EDITOR_GET(m_var) _EDITOR_GET(m_var)
+Variant _EDITOR_GET(const String &p_var);
 
 #define ED_IS_SHORTCUT(p_name, p_ev) (EditorSettings::get_singleton()->is_shortcut(p_name, p_ev))
 Ref<ShortCut> ED_SHORTCUT(const String &p_path, const String &p_name, uint32_t p_keycode = 0);

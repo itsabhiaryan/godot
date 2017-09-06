@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -46,7 +47,6 @@
 #include "servers/visual_server.h"
 
 class AudioDriverIphone;
-// class RasterizerGLES2;
 
 class OSIPhone : public OS_Unix {
 
@@ -65,9 +65,6 @@ private:
 	};
 
 	uint8_t supported_orientations;
-
-	//	Rasterizer *rasterizer;
-	//	RasterizerGLES2* rasterizer_gles22;
 
 	VisualServer *visual_server;
 	PhysicsServer *physics_server;
@@ -117,9 +114,9 @@ private:
 
 	Vector3 last_accel;
 
-	InputEvent event_queue[MAX_EVENTS];
+	Ref<InputEvent> event_queue[MAX_EVENTS];
 	int event_count;
-	void queue_event(const InputEvent &p_event);
+	void queue_event(const Ref<InputEvent> &p_event);
 
 	String data_dir;
 	String unique_ID;
@@ -144,14 +141,21 @@ public:
 	void update_magnetometer(float p_x, float p_y, float p_z);
 	void update_gyroscope(float p_x, float p_y, float p_z);
 
+	int get_unused_joy_id();
+	void joy_connection_changed(int p_idx, bool p_connected, String p_name);
+	void joy_button(int p_device, int p_button, bool p_pressed);
+	void joy_axis(int p_device, int p_axis, const InputDefault::JoyAxis &p_value);
+
 	static OSIPhone *get_singleton();
 
 	virtual void set_mouse_show(bool p_show);
 	virtual void set_mouse_grab(bool p_grab);
 	virtual bool is_mouse_grab_enabled() const;
-	virtual Point2 get_mouse_pos() const;
+	virtual Point2 get_mouse_position() const;
 	virtual int get_mouse_button_state() const;
 	virtual void set_window_title(const String &p_title);
+
+	virtual void alert(const String &p_alert, const String &p_title = "ALERT!");
 
 	virtual void set_video_mode(const VideoMode &p_video_mode, int p_screen = 0);
 	virtual VideoMode get_video_mode(int p_screen = 0) const;
@@ -182,8 +186,8 @@ public:
 	void set_locale(String p_locale);
 	String get_locale() const;
 
-	void set_unique_ID(String p_ID);
-	String get_unique_ID() const;
+	void set_unique_id(String p_ID);
+	String get_unique_id() const;
 
 	virtual Error native_video_play(String p_path, float p_volume, String p_audio_track, String p_subtitle_track);
 	virtual bool native_video_is_playing() const;
@@ -192,6 +196,7 @@ public:
 	virtual void native_video_focus_out();
 	virtual void native_video_stop();
 
+	virtual bool _check_internal_feature_support(const String &p_feature);
 	OSIPhone(int width, int height);
 	~OSIPhone();
 };

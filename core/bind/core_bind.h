@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -29,6 +30,8 @@
 #ifndef CORE_BIND_H
 #define CORE_BIND_H
 
+#include "image.h"
+#include "io/compression.h"
 #include "io/resource_loader.h"
 #include "io/resource_saver.h"
 #include "os/dir_access.h"
@@ -82,6 +85,8 @@ public:
 	_ResourceSaver();
 };
 
+VARIANT_ENUM_CAST(_ResourceSaver::SaverFlags);
+
 class MainLoop;
 
 class _OS : public Object {
@@ -119,7 +124,7 @@ public:
 		MONTH_DECEMBER
 	};
 
-	Point2 get_mouse_pos() const;
+	Point2 get_mouse_position() const;
 	void set_window_title(const String &p_title);
 	int get_mouse_button_state() const;
 
@@ -135,9 +140,9 @@ public:
 	virtual int get_screen_count() const;
 	virtual int get_current_screen() const;
 	virtual void set_current_screen(int p_screen);
-	virtual Point2 get_screen_position(int p_screen = 0) const;
-	virtual Size2 get_screen_size(int p_screen = 0) const;
-	virtual int get_screen_dpi(int p_screen = 0) const;
+	virtual Point2 get_screen_position(int p_screen = -1) const;
+	virtual Size2 get_screen_size(int p_screen = -1) const;
+	virtual int get_screen_dpi(int p_screen = -1) const;
 	virtual Point2 get_window_position() const;
 	virtual void set_window_position(const Point2 &p_position);
 	virtual Size2 get_window_size() const;
@@ -155,6 +160,8 @@ public:
 	virtual void set_borderless_window(bool p_borderless);
 	virtual bool get_borderless_window() const;
 
+	virtual void set_ime_position(const Point2 &p_pos);
+
 	Error native_video_play(String p_path, float p_volume, String p_audio_track, String p_subtitle_track);
 	bool native_video_is_playing();
 	void native_video_pause();
@@ -170,7 +177,7 @@ public:
 	Error kill(int p_pid);
 	Error shell_open(String p_uri);
 
-	int get_process_ID() const;
+	int get_process_id() const;
 
 	bool has_environment(const String &p_var) const;
 	String get_environment(const String &p_var) const;
@@ -199,7 +206,7 @@ public:
 
 	bool is_debug_build() const;
 
-	String get_unique_ID() const;
+	String get_unique_id() const;
 
 	String get_scancode_string(uint32_t p_code) const;
 	bool is_scancode_unicode(uint32_t p_unicode) const;
@@ -225,7 +232,7 @@ public:
 
 	void set_use_file_access_save_and_swap(bool p_enable);
 
-	void set_icon(const Image &p_icon);
+	void set_icon(const Ref<Image> &p_icon);
 
 	int get_exit_code() const;
 	void set_exit_code(int p_code);
@@ -305,6 +312,8 @@ public:
 	_OS();
 };
 
+VARIANT_ENUM_CAST(_OS::Weekday);
+VARIANT_ENUM_CAST(_OS::Month);
 VARIANT_ENUM_CAST(_OS::SystemDir);
 VARIANT_ENUM_CAST(_OS::ScreenOrientation);
 
@@ -364,8 +373,16 @@ public:
 		WRITE_READ = 7,
 	};
 
+	enum CompressionMode {
+		COMPRESSION_FASTLZ = Compression::MODE_FASTLZ,
+		COMPRESSION_DEFLATE = Compression::MODE_DEFLATE,
+		COMPRESSION_ZSTD = Compression::MODE_ZSTD,
+		COMPRESSION_GZIP = Compression::MODE_GZIP
+	};
+
 	Error open_encrypted(const String &p_path, int p_mode_flags, const Vector<uint8_t> &p_key);
 	Error open_encrypted_pass(const String &p_path, int p_mode_flags, const String &p_pass);
+	Error open_compressed(const String &p_path, int p_mode_flags, int p_compress_mode = 0);
 
 	Error open(const String &p_path, int p_mode_flags); ///< open a file
 	void close(); ///< close a file
@@ -434,6 +451,9 @@ public:
 	virtual ~_File();
 };
 
+VARIANT_ENUM_CAST(_File::ModeFlags);
+VARIANT_ENUM_CAST(_File::CompressionMode);
+
 class _Directory : public Reference {
 
 	GDCLASS(_Directory, Reference);
@@ -445,7 +465,7 @@ protected:
 public:
 	Error open(const String &p_path);
 
-	Error list_dir_begin(bool p_skip_internal = false, bool p_skip_hidden = false); ///< This starts dir listing
+	Error list_dir_begin(bool p_skip_navigational = false, bool p_skip_hidden = false); ///< This starts dir listing
 	String get_next();
 	bool current_is_dir() const;
 
@@ -565,6 +585,8 @@ public:
 	~_Thread();
 };
 
+VARIANT_ENUM_CAST(_Thread::Priority);
+
 class _ClassDB : public Object {
 
 	GDCLASS(_ClassDB, Object)
@@ -586,6 +608,8 @@ public:
 	Array get_signal_list(StringName p_class, bool p_no_inheritance = false) const;
 
 	Array get_property_list(StringName p_class, bool p_no_inheritance = false) const;
+	Variant get_property(Object *p_object, const StringName &p_property) const;
+	Error set_property(Object *p_object, const StringName &p_property, const Variant &p_value) const;
 
 	bool has_method(StringName p_class, StringName p_method, bool p_no_inheritance = false) const;
 
@@ -624,11 +648,14 @@ public:
 	void set_time_scale(float p_scale);
 	float get_time_scale();
 
-	String get_custom_level() const;
-
 	MainLoop *get_main_loop() const;
 
 	Dictionary get_version_info() const;
+
+	bool is_in_fixed_frame() const;
+
+	void set_editor_hint(bool p_enabled);
+	bool is_editor_hint() const;
 
 	_Engine();
 };

@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -117,7 +118,7 @@ void PacketPeerUDPWinsock::_set_sock_blocking(bool p_blocking) {
 	};
 }
 
-Error PacketPeerUDPWinsock::listen(int p_port, IP_Address p_bind_address, int p_recv_buffer_size) {
+Error PacketPeerUDPWinsock::listen(int p_port, const IP_Address &p_bind_address, int p_recv_buffer_size) {
 
 	ERR_FAIL_COND_V(sockfd != -1, ERR_ALREADY_IN_USE);
 	ERR_FAIL_COND_V(!p_bind_address.is_valid() && !p_bind_address.is_wildcard(), ERR_INVALID_PARAMETER);
@@ -202,6 +203,8 @@ Error PacketPeerUDPWinsock::_poll(bool p_wait) {
 
 		len = sizeof(struct sockaddr_storage);
 		++queue_count;
+		if (p_wait)
+			break;
 	};
 
 	if (ret == SOCKET_ERROR) {

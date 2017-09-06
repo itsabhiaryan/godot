@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -168,7 +169,7 @@ private:
 	void _thumbnail_done(const String &p_path, const Ref<Texture> &p_preview, const Variant &p_udata);
 	void _request_single_thumbnail(const String &p_path);
 
-	void _unhandled_input(const InputEvent &p_event);
+	void _unhandled_input(const Ref<InputEvent> &p_event);
 
 protected:
 	void _notification(int p_what);

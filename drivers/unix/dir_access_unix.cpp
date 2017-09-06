@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -193,21 +194,9 @@ Error DirAccessUnix::make_dir(String p_dir) {
 
 	p_dir = fix_path(p_dir);
 
-#if 1
-
 	bool success = (mkdir(p_dir.utf8().get_data(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == 0);
 	int err = errno;
 
-#else
-	char real_current_dir_name[2048];
-	getcwd(real_current_dir_name, 2048);
-	chdir(current_dir.utf8().get_data()); //ascii since this may be unicode or wathever the host os wants
-
-	bool success = (mkdir(p_dir.utf8().get_data(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == 0);
-	int err = errno;
-
-	chdir(real_current_dir_name);
-#endif
 	if (success) {
 		return OK;
 	};
@@ -222,36 +211,38 @@ Error DirAccessUnix::make_dir(String p_dir) {
 Error DirAccessUnix::change_dir(String p_dir) {
 
 	GLOBAL_LOCK_FUNCTION
-	p_dir = fix_path(p_dir);
 
-	char real_current_dir_name[2048];
-	getcwd(real_current_dir_name, 2048);
-	String prev_dir;
-	if (prev_dir.parse_utf8(real_current_dir_name))
-		prev_dir = real_current_dir_name; //no utf8, maybe latin?
-
-	chdir(current_dir.utf8().get_data()); //ascii since this may be unicode or wathever the host os wants
-	bool worked = (chdir(p_dir.utf8().get_data()) == 0); // we can only give this utf8
-
-	String base = _get_root_path();
-	if (base != "") {
-
+	// make sure current_dir is valid absolute path
+	if (current_dir == "." || current_dir == "") {
+		char real_current_dir_name[2048];
 		getcwd(real_current_dir_name, 2048);
-		String new_dir;
-		new_dir.parse_utf8(real_current_dir_name);
-		if (!new_dir.begins_with(base))
-			worked = false;
+		current_dir.parse_utf8(real_current_dir_name);
 	}
 
-	if (worked) {
+	if (p_dir == ".") {
+		return OK;
+	}
 
-		getcwd(real_current_dir_name, 2048);
-		if (current_dir.parse_utf8(real_current_dir_name))
-			current_dir = real_current_dir_name; //no utf8, maybe latin?
+	p_dir = fix_path(p_dir);
+
+	String prev_dir = current_dir;
+
+	if (p_dir.is_rel_path()) {
+		String next_dir = current_dir + "/" + p_dir;
+		next_dir = next_dir.simplify_path();
+		current_dir = next_dir;
+	} else {
+		current_dir = p_dir;
+	}
+
+	bool worked = (chdir(current_dir.utf8().get_data()) == 0); // we can only give this utf8
+	if (!worked) {
+		current_dir = prev_dir;
+		return ERR_INVALID_PARAMETER;
 	}
 
 	chdir(prev_dir.utf8().get_data());
-	return worked ? OK : ERR_INVALID_PARAMETER;
+	return OK;
 }
 
 String DirAccessUnix::get_current_dir() {

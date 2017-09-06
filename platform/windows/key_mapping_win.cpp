@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -43,7 +44,7 @@ static _WinTranslatePair _vk_to_keycode[] = {
 
 	//VK_CLEAR (0x0C)
 
-	{ KEY_RETURN, VK_RETURN }, //(0x0D)
+	{ KEY_ENTER, VK_RETURN }, //(0x0D)
 
 	{ KEY_SHIFT, VK_SHIFT }, //(0x10)
 

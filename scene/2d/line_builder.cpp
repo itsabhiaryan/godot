@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -82,8 +83,8 @@ static inline Vector2 rotate90(const Vector2 &v) {
 
 static inline Vector2 interpolate(const Rect2 &r, const Vector2 &v) {
 	return Vector2(
-			Math::lerp(r.get_pos().x, r.get_pos().x + r.get_size().x, v.x),
-			Math::lerp(r.get_pos().y, r.get_pos().y + r.get_size().y, v.y));
+			Math::lerp(r.position.x, r.position.x + r.get_size().x, v.x),
+			Math::lerp(r.position.y, r.position.y + r.get_size().y, v.y));
 }
 
 //----------------------------------------------------------------------------
@@ -138,7 +139,7 @@ void LineBuilder::build() {
 
 	float current_distance0 = 0.f;
 	float current_distance1 = 0.f;
-	float total_distance;
+	float total_distance = 0.f;
 	_interpolate_color = gradient != NULL;
 	bool distance_required = _interpolate_color || texture_mode == LINE_TEXTURE_TILE;
 	if (distance_required)
@@ -336,7 +337,7 @@ void LineBuilder::build() {
 			} else if (current_joint_mode == LINE_JOINT_ROUND) {
 				Vector2 vbegin = cbegin - pos1;
 				Vector2 vend = cend - pos1;
-				strip_add_arc(pos1, vend.angle_to(vbegin), orientation);
+				strip_add_arc(pos1, vbegin.angle_to(vend), orientation);
 			}
 
 			if (intersection_result != SEGMENT_INTERSECT)
@@ -497,7 +498,7 @@ void LineBuilder::strip_add_arc(Vector2 center, float angle_delta, Orientation o
 	if (angle_delta < 0.f)
 		angle_step = -angle_step;
 
-	float t = vbegin.angle_to(Vector2(1, 0));
+	float t = Vector2(1, 0).angle_to(vbegin);
 	float end_angle = t + angle_delta;
 	Vector2 rpos(0, 0);
 
@@ -524,7 +525,7 @@ void LineBuilder::new_arc(Vector2 center, Vector2 vbegin, float angle_delta, Col
 	if (angle_delta < 0.f)
 		angle_step = -angle_step;
 
-	float t = vbegin.angle_to(Vector2(1, 0));
+	float t = Vector2(1, 0).angle_to(vbegin);
 	float end_angle = t + angle_delta;
 	Vector2 rpos(0, 0);
 	float tt_begin = -Math_PI / 2.f;

@@ -1,10 +1,39 @@
+/*************************************************************************/
+/*  export_template_manager.cpp                                          */
+/*************************************************************************/
+/*                       This file is part of:                           */
+/*                           GODOT ENGINE                                */
+/*                      https://godotengine.org                          */
+/*************************************************************************/
+/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/*                                                                       */
+/* Permission is hereby granted, free of charge, to any person obtaining */
+/* a copy of this software and associated documentation files (the       */
+/* "Software"), to deal in the Software without restriction, including   */
+/* without limitation the rights to use, copy, modify, merge, publish,   */
+/* distribute, sublicense, and/or sell copies of the Software, and to    */
+/* permit persons to whom the Software is furnished to do so, subject to */
+/* the following conditions:                                             */
+/*                                                                       */
+/* The above copyright notice and this permission notice shall be        */
+/* included in all copies or substantial portions of the Software.       */
+/*                                                                       */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
+/*************************************************************************/
 #include "export_template_manager.h"
+
 #include "editor_node.h"
 #include "editor_scale.h"
+#include "io/zip_io.h"
 #include "os/dir_access.h"
 #include "version.h"
-
-#include "io/zip_io.h"
 
 void ExportTemplateManager::_update_template_list() {
 
@@ -166,7 +195,7 @@ void ExportTemplateManager::_install_from_file(const String &p_file) {
 			data.resize(info.uncompressed_size);
 
 			//read
-			ret = unzOpenCurrentFile(pkg);
+			unzOpenCurrentFile(pkg);
 			ret = unzReadCurrentFile(pkg, data.ptr(), data.size());
 			unzCloseCurrentFile(pkg);
 
@@ -228,7 +257,7 @@ void ExportTemplateManager::_install_from_file(const String &p_file) {
 		//get filename
 		unz_file_info info;
 		char fname[16384];
-		ret = unzGetCurrentFileInfo(pkg, &info, fname, 16384, NULL, 0, NULL, 0);
+		unzGetCurrentFileInfo(pkg, &info, fname, 16384, NULL, 0, NULL, 0);
 
 		String file = fname;
 
@@ -236,8 +265,8 @@ void ExportTemplateManager::_install_from_file(const String &p_file) {
 		data.resize(info.uncompressed_size);
 
 		//read
-		ret = unzOpenCurrentFile(pkg);
-		ret = unzReadCurrentFile(pkg, data.ptr(), data.size());
+		unzOpenCurrentFile(pkg);
+		unzReadCurrentFile(pkg, data.ptr(), data.size());
 		unzCloseCurrentFile(pkg);
 
 		print_line(fname);
@@ -284,77 +313,6 @@ void ExportTemplateManager::_bind_methods() {
 	ClassDB::bind_method("_uninstall_template", &ExportTemplateManager::_uninstall_template);
 	ClassDB::bind_method("_uninstall_template_confirm", &ExportTemplateManager::_uninstall_template_confirm);
 	ClassDB::bind_method("_install_from_file", &ExportTemplateManager::_install_from_file);
-
-#if 0
-	FileAccess *fa = NULL;
-	zlib_filefunc_def io = zipio_create_io_from_file(&fa);
-
-	unzFile pkg = unzOpen2(p_file.utf8().get_data(), &io);
-	if (!pkg) {
-
-		current_option = -1;
-		//confirmation->get_cancel()->hide();
-		accept->get_ok()->set_text(TTR("I see.."));
-		accept->set_text(TTR("Can't open export templates zip."));
-		accept->popup_centered_minsize();
-		return;
-	}
-	int ret = unzGoToFirstFile(pkg);
-
-	int fc = 0; //count them
-
-	while (ret == UNZ_OK) {
-		fc++;
-		ret = unzGoToNextFile(pkg);
-	}
-
-	ret = unzGoToFirstFile(pkg);
-
-	EditorProgress p("ltask", TTR("Loading Export Templates"), fc);
-
-	fc = 0;
-
-	while (ret == UNZ_OK) {
-
-		//get filename
-		unz_file_info info;
-		char fname[16384];
-		ret = unzGetCurrentFileInfo(pkg, &info, fname, 16384, NULL, 0, NULL, 0);
-
-		String file = fname;
-
-		Vector<uint8_t> data;
-		data.resize(info.uncompressed_size);
-
-		//read
-		ret = unzOpenCurrentFile(pkg);
-		ret = unzReadCurrentFile(pkg, data.ptr(), data.size());
-		unzCloseCurrentFile(pkg);
-
-		print_line(fname);
-		/*
-		for(int i=0;i<512;i++) {
-			print_line(itos(data[i]));
-		}
-		*/
-
-		file = file.get_file();
-
-		p.step(TTR("Importing:") + " " + file, fc);
-
-		FileAccess *f = FileAccess::open(EditorSettings::get_singleton()->get_settings_path() + "/templates/" + file, FileAccess::WRITE);
-
-		ERR_CONTINUE(!f);
-		f->store_buffer(data.ptr(), data.size());
-
-		memdelete(f);
-
-		ret = unzGoToNextFile(pkg);
-		fc++;
-	}
-
-	unzClose(pkg);
-#endif
 }
 
 ExportTemplateManager::ExportTemplateManager() {

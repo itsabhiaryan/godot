@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -28,8 +29,8 @@
 /*************************************************************************/
 #include "os_android.h"
 
-#include "core/global_config.h"
 #include "core/io/file_access_buffered_fa.h"
+#include "core/project_settings.h"
 #include "drivers/gles3/rasterizer_gles3.h"
 #include "drivers/unix/dir_access_unix.h"
 #include "drivers/unix/file_access_unix.h"
@@ -134,7 +135,7 @@ void OS_Android::initialize(const VideoMode &p_desired, int p_video_driver, int 
 		visual_server = memnew(VisualServerWrapMT(visual_server, false));
 	};*/
 	visual_server->init();
-	visual_server->cursor_set_visible(false, 0);
+	//	visual_server->cursor_set_visible(false, 0);
 
 	AudioDriverManager::get_driver(p_audio_driver)->set_singleton();
 
@@ -145,7 +146,6 @@ void OS_Android::initialize(const VideoMode &p_desired, int p_video_driver, int 
 
 	physics_server = memnew(PhysicsServerSW);
 	physics_server->init();
-	//physics_2d_server = memnew( Physics2DServerSW );
 	physics_2d_server = Physics2DServerWrapMT::init_server<Physics2DServerSW>();
 	physics_2d_server->init();
 
@@ -159,43 +159,6 @@ void OS_Android::set_main_loop(MainLoop *p_main_loop) {
 
 	main_loop = p_main_loop;
 	input->set_main_loop(p_main_loop);
-#if 0
-
-	print_line("preGS");
-	FileAccess *f=memnew( FileAccessAndroid );
-	print("made f %p\n",f);
-	Error err = f->open("AndroidManifest.xml",FileAccess::READ);
-	if (err) {
-
-		print("************NO FILE!!\n");
-	} else {
-		print("************YES FILE!!\n");
-	}
-	f->close();
-	print_line("end");
-
-
-	AAssetDir* aad = AAssetManager_openDir(FileAccessAndroid::asset_manager,".");
-
-	if (aad) {
-
-		print_line("DIR OPEN OK");
-
-		const char *fn= AAssetDir_getNextFileName(aad);
-
-		while(fn) {
-
-			print_line("FNAME: "+String(fn));
-			fn= AAssetDir_getNextFileName(aad);
-		}
-
-		AAssetDir_close(aad);
-	} else {
-
-		print_line("DIR NO OPEN");
-	}
-
-#endif
 }
 
 void OS_Android::delete_main_loop() {
@@ -244,7 +207,7 @@ bool OS_Android::is_mouse_grab_enabled() const {
 	return false;
 }
 
-Point2 OS_Android::get_mouse_pos() const {
+Point2 OS_Android::get_mouse_position() const {
 
 	return Point2();
 }
@@ -359,7 +322,7 @@ void OS_Android::process_joy_event(OS_Android::JoypadEvent p_event) {
 	}
 }
 
-void OS_Android::process_event(InputEvent p_event) {
+void OS_Android::process_event(Ref<InputEvent> p_event) {
 
 	input->parse_input_event(p_event);
 }
@@ -373,25 +336,24 @@ void OS_Android::process_touch(int p_what, int p_pointer, const Vector<TouchPos>
 
 			if (touch.size()) {
 				//end all if exist
-				InputEvent ev;
-				ev.type = InputEvent::MOUSE_BUTTON;
-				ev.mouse_button.button_index = BUTTON_LEFT;
-				ev.mouse_button.button_mask = BUTTON_MASK_LEFT;
-				ev.mouse_button.pressed = false;
-				ev.mouse_button.x = touch[0].pos.x;
-				ev.mouse_button.y = touch[0].pos.y;
-				ev.mouse_button.global_x = touch[0].pos.x;
-				ev.mouse_button.global_y = touch[0].pos.y;
-				input->parse_input_event(ev);
+				{
+					Ref<InputEventMouseButton> ev;
+					ev.instance();
+					ev->set_button_index(BUTTON_LEFT);
+					ev->set_button_mask(BUTTON_MASK_LEFT);
+					ev->set_pressed(false);
+					ev->set_position(touch[0].pos);
+					ev->set_global_position(touch[0].pos);
+					input->parse_input_event(ev);
+				}
 
 				for (int i = 0; i < touch.size(); i++) {
 
-					InputEvent ev;
-					ev.type = InputEvent::SCREEN_TOUCH;
-					ev.screen_touch.index = touch[i].id;
-					ev.screen_touch.pressed = false;
-					ev.screen_touch.x = touch[i].pos.x;
-					ev.screen_touch.y = touch[i].pos.y;
+					Ref<InputEventScreenTouch> ev;
+					ev.instance();
+					ev->set_index(touch[i].id);
+					ev->set_pressed(false);
+					ev->set_position(touch[i].pos);
 					input->parse_input_event(ev);
 				}
 			}
@@ -404,16 +366,15 @@ void OS_Android::process_touch(int p_what, int p_pointer, const Vector<TouchPos>
 
 			{
 				//send mouse
-				InputEvent ev;
-				ev.type = InputEvent::MOUSE_BUTTON;
-				ev.mouse_button.button_index = BUTTON_LEFT;
-				ev.mouse_button.button_mask = BUTTON_MASK_LEFT;
-				ev.mouse_button.pressed = true;
-				ev.mouse_button.x = touch[0].pos.x;
-				ev.mouse_button.y = touch[0].pos.y;
-				ev.mouse_button.global_x = touch[0].pos.x;
-				ev.mouse_button.global_y = touch[0].pos.y;
-				input->set_mouse_pos(Point2(touch[0].pos.x, touch[0].pos.y));
+				Ref<InputEventMouseButton> ev;
+				ev.instance();
+				// ev.type = Ref<InputEvent>::MOUSE_BUTTON;
+				ev->set_button_index(BUTTON_LEFT);
+				ev->set_button_mask(BUTTON_MASK_LEFT);
+				ev->set_pressed(true);
+				ev->set_position(touch[0].pos);
+				ev->set_global_position(touch[0].pos);
+				input->set_mouse_position(Point2(touch[0].pos.x, touch[0].pos.y));
 				last_mouse = touch[0].pos;
 				input->parse_input_event(ev);
 			}
@@ -421,12 +382,11 @@ void OS_Android::process_touch(int p_what, int p_pointer, const Vector<TouchPos>
 			//send touch
 			for (int i = 0; i < touch.size(); i++) {
 
-				InputEvent ev;
-				ev.type = InputEvent::SCREEN_TOUCH;
-				ev.screen_touch.index = touch[i].id;
-				ev.screen_touch.pressed = true;
-				ev.screen_touch.x = touch[i].pos.x;
-				ev.screen_touch.y = touch[i].pos.y;
+				Ref<InputEventScreenTouch> ev;
+				ev.instance();
+				ev->set_index(touch[i].id);
+				ev->set_pressed(true);
+				ev->set_position(touch[i].pos);
 				input->parse_input_event(ev);
 			}
 
@@ -435,16 +395,13 @@ void OS_Android::process_touch(int p_what, int p_pointer, const Vector<TouchPos>
 
 			if (p_points.size()) {
 				//send mouse, should look for point 0?
-				InputEvent ev;
-				ev.type = InputEvent::MOUSE_MOTION;
-				ev.mouse_motion.button_mask = BUTTON_MASK_LEFT;
-				ev.mouse_motion.x = p_points[0].pos.x;
-				ev.mouse_motion.y = p_points[0].pos.y;
-				input->set_mouse_pos(Point2(ev.mouse_motion.x, ev.mouse_motion.y));
-				ev.mouse_motion.speed_x = input->get_last_mouse_speed().x;
-				ev.mouse_motion.speed_y = input->get_last_mouse_speed().y;
-				ev.mouse_motion.relative_x = p_points[0].pos.x - last_mouse.x;
-				ev.mouse_motion.relative_y = p_points[0].pos.y - last_mouse.y;
+				Ref<InputEventMouseMotion> ev;
+				ev.instance();
+				ev->set_button_mask(BUTTON_MASK_LEFT);
+				ev->set_position(p_points[0].pos);
+				input->set_mouse_position(Point2(ev->get_position().x, ev->get_position().y));
+				ev->set_speed(input->get_last_mouse_speed());
+				ev->set_relative(p_points[0].pos - last_mouse);
 				last_mouse = p_points[0].pos;
 				input->parse_input_event(ev);
 			}
@@ -467,13 +424,11 @@ void OS_Android::process_touch(int p_what, int p_pointer, const Vector<TouchPos>
 				if (touch[i].pos == p_points[idx].pos)
 					continue; //no move unncesearily
 
-				InputEvent ev;
-				ev.type = InputEvent::SCREEN_DRAG;
-				ev.screen_drag.index = touch[i].id;
-				ev.screen_drag.x = p_points[idx].pos.x;
-				ev.screen_drag.y = p_points[idx].pos.y;
-				ev.screen_drag.relative_x = p_points[idx].pos.x - touch[i].pos.x;
-				ev.screen_drag.relative_y = p_points[idx].pos.y - touch[i].pos.y;
+				Ref<InputEventScreenDrag> ev;
+				ev.instance();
+				ev->set_index(touch[i].id);
+				ev->set_position(p_points[idx].pos);
+				ev->set_relative(p_points[idx].pos - touch[i].pos);
 				input->parse_input_event(ev);
 				touch[i].pos = p_points[idx].pos;
 			}
@@ -483,26 +438,23 @@ void OS_Android::process_touch(int p_what, int p_pointer, const Vector<TouchPos>
 
 			if (touch.size()) {
 				//end all if exist
-				InputEvent ev;
-				ev.type = InputEvent::MOUSE_BUTTON;
-				ev.mouse_button.button_index = BUTTON_LEFT;
-				ev.mouse_button.button_mask = BUTTON_MASK_LEFT;
-				ev.mouse_button.pressed = false;
-				ev.mouse_button.x = touch[0].pos.x;
-				ev.mouse_button.y = touch[0].pos.y;
-				ev.mouse_button.global_x = touch[0].pos.x;
-				ev.mouse_button.global_y = touch[0].pos.y;
-				input->set_mouse_pos(Point2(touch[0].pos.x, touch[0].pos.y));
+				Ref<InputEventMouseButton> ev;
+				ev.instance();
+				ev->set_button_index(BUTTON_LEFT);
+				ev->set_button_mask(BUTTON_MASK_LEFT);
+				ev->set_pressed(false);
+				ev->set_position(touch[0].pos);
+				ev->set_global_position(touch[0].pos);
+				input->set_mouse_position(Point2(touch[0].pos.x, touch[0].pos.y));
 				input->parse_input_event(ev);
 
 				for (int i = 0; i < touch.size(); i++) {
 
-					InputEvent ev;
-					ev.type = InputEvent::SCREEN_TOUCH;
-					ev.screen_touch.index = touch[i].id;
-					ev.screen_touch.pressed = false;
-					ev.screen_touch.x = touch[i].pos.x;
-					ev.screen_touch.y = touch[i].pos.y;
+					Ref<InputEventScreenTouch> ev;
+					ev.instance();
+					ev->set_index(touch[i].id);
+					ev->set_pressed(false);
+					ev->set_position(touch[i].pos);
 					input->parse_input_event(ev);
 				}
 				touch.clear();
@@ -516,12 +468,12 @@ void OS_Android::process_touch(int p_what, int p_pointer, const Vector<TouchPos>
 			TouchPos tp = p_points[p_pointer];
 			touch.push_back(tp);
 
-			InputEvent ev;
-			ev.type = InputEvent::SCREEN_TOUCH;
-			ev.screen_touch.index = tp.id;
-			ev.screen_touch.pressed = true;
-			ev.screen_touch.x = tp.pos.x;
-			ev.screen_touch.y = tp.pos.y;
+			Ref<InputEventScreenTouch> ev;
+			ev.instance();
+
+			ev->set_index(tp.id);
+			ev->set_pressed(true);
+			ev->set_position(tp.pos);
 			input->parse_input_event(ev);
 
 		} break;
@@ -530,12 +482,11 @@ void OS_Android::process_touch(int p_what, int p_pointer, const Vector<TouchPos>
 			for (int i = 0; i < touch.size(); i++) {
 				if (touch[i].id == p_pointer) {
 
-					InputEvent ev;
-					ev.type = InputEvent::SCREEN_TOUCH;
-					ev.screen_touch.index = touch[i].id;
-					ev.screen_touch.pressed = false;
-					ev.screen_touch.x = touch[i].pos.x;
-					ev.screen_touch.y = touch[i].pos.y;
+					Ref<InputEventScreenTouch> ev;
+					ev.instance();
+					ev->set_index(touch[i].id);
+					ev->set_pressed(false);
+					ev->set_position(touch[i].pos);
 					input->parse_input_event(ev);
 					touch.remove(i);
 					i--;
@@ -688,7 +639,7 @@ String OS_Android::get_data_dir() const {
 	}
 
 	return ".";
-	//return GlobalConfig::get_singleton()->get_singleton_object("GodotOS")->call("get_data_dir");
+	//return ProjectSettings::get_singleton()->get_singleton_object("GodotOS")->call("get_data_dir");
 }
 
 void OS_Android::set_screen_orientation(ScreenOrientation p_orientation) {
@@ -697,11 +648,11 @@ void OS_Android::set_screen_orientation(ScreenOrientation p_orientation) {
 		set_screen_orientation_func(p_orientation);
 }
 
-String OS_Android::get_unique_ID() const {
+String OS_Android::get_unique_id() const {
 
 	if (get_unique_id_func)
 		return get_unique_id_func();
-	return OS::get_unique_ID();
+	return OS::get_unique_id();
 }
 
 Error OS_Android::native_video_play(String p_path, float p_volume) {
@@ -750,6 +701,10 @@ bool OS_Android::is_joy_known(int p_device) {
 
 String OS_Android::get_joy_guid(int p_device) const {
 	return input->get_joy_guid_remapped(p_device);
+}
+
+bool OS_Android::_check_internal_feature_support(const String &p_feature) {
+	return p_feature == "mobile" || p_feature == "etc" || p_feature == "etc2"; //TODO support etc2 only if GLES3 driver is selected
 }
 
 OS_Android::OS_Android(GFXInitFunc p_gfx_init_func, void *p_gfx_init_ud, OpenURIFunc p_open_uri_func, GetDataDirFunc p_get_data_dir_func, GetLocaleFunc p_get_locale_func, GetModelFunc p_get_model_func, GetScreenDPIFunc p_get_screen_dpi_func, ShowVirtualKeyboardFunc p_show_vk, HideVirtualKeyboardFunc p_hide_vk, SetScreenOrientationFunc p_screen_orient, GetUniqueIDFunc p_get_unique_id, GetSystemDirFunc p_get_sdir_func, VideoPlayFunc p_video_play_func, VideoIsPlayingFunc p_video_is_playing_func, VideoPauseFunc p_video_pause_func, VideoStopFunc p_video_stop_func, SetKeepScreenOnFunc p_set_keep_screen_on_func, AlertFunc p_alert_func, bool p_use_apk_expansion) {

@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "input_default.h"
+
 #include "input_map.h"
 #include "os/os.h"
 #include "scene/resources/texture.h"
@@ -95,58 +97,6 @@ bool InputDefault::is_joy_button_pressed(int p_device, int p_button) const {
 bool InputDefault::is_action_pressed(const StringName &p_action) const {
 
 	return action_state.has(p_action) && action_state[p_action].pressed;
-#if 0
-	if (custom_action_press.has(p_action))
-		return true; //simpler
-
-	const List<InputEvent> *alist = InputMap::get_singleton()->get_action_list(p_action);
-	if (!alist)
-		return false;
-
-
-	for (const List<InputEvent>::Element *E=alist->front();E;E=E->next()) {
-
-
-		int device=E->get().device;
-
-		switch(E->get().type) {
-
-			case InputEvent::KEY: {
-
-				const InputEventKey &iek=E->get().key;
-				if ((keys_pressed.has(iek.scancode)))
-					return true;
-			} break;
-			case InputEvent::MOUSE_BUTTON: {
-
-				const InputEventMouseButton &iemb=E->get().mouse_button;
-				 if(mouse_button_mask&(1<<iemb.button_index))
-					 return true;
-			} break;
-			case InputEvent::JOYPAD_BUTTON: {
-
-				const InputEventJoypadButton &iejb=E->get().joy_button;
-				int c = _combine_device(iejb.button_index,device);
-				if (joy_buttons_pressed.has(c))
-					return true;
-			} break;
-			case InputEvent::JOYPAD_MOTION: {
-
-				const InputEventJoypadMotion &iejm=E->get().joy_motion;
-				int c = _combine_device(iejm.axis,device);
-				if (_joy_axis.has(c)) {
-					if (iejm.axis_value < 0) {
-						if (_joy_axis[c] < -0.5f) return true;
-					}
-					else
-						if (_joy_axis[c] > 0.5f) return true;
-				}
-			} break;
-		}
-	}
-
-	return false;
-#endif
 }
 
 bool InputDefault::is_action_just_pressed(const StringName &p_action) const {
@@ -296,94 +246,86 @@ Vector3 InputDefault::get_gyroscope() const {
 	return gyroscope;
 }
 
-void InputDefault::parse_input_event(const InputEvent &p_event) {
+void InputDefault::parse_input_event(const Ref<InputEvent> &p_event) {
 
 	_THREAD_SAFE_METHOD_
-	switch (p_event.type) {
 
-		case InputEvent::KEY: {
+	Ref<InputEventKey> k = p_event;
+	if (k.is_valid() && !k->is_echo() && k->get_scancode() != 0) {
 
-			if (p_event.key.echo)
-				break;
-			if (p_event.key.scancode == 0)
-				break;
+		//print_line(p_event);
 
-			//print_line(p_event);
-
-			if (p_event.key.pressed)
-				keys_pressed.insert(p_event.key.scancode);
-			else
-				keys_pressed.erase(p_event.key.scancode);
-		} break;
-		case InputEvent::MOUSE_BUTTON: {
-
-			if (p_event.mouse_button.doubleclick)
-				break;
-
-			if (p_event.mouse_button.pressed)
-				mouse_button_mask |= (1 << p_event.mouse_button.button_index);
-			else
-				mouse_button_mask &= ~(1 << p_event.mouse_button.button_index);
-
-			if (main_loop && emulate_touch && p_event.mouse_button.button_index == 1) {
-				InputEventScreenTouch touch_event;
-				touch_event.index = 0;
-				touch_event.pressed = p_event.mouse_button.pressed;
-				touch_event.x = p_event.mouse_button.x;
-				touch_event.y = p_event.mouse_button.y;
-				InputEvent ev;
-				ev.type = InputEvent::SCREEN_TOUCH;
-				ev.screen_touch = touch_event;
-				main_loop->input_event(ev);
-			}
-
-			Point2 pos = Point2(p_event.mouse_button.global_x, p_event.mouse_button.global_y);
-			if (mouse_pos != pos) {
-				set_mouse_pos(pos);
-			}
-		} break;
-		case InputEvent::MOUSE_MOTION: {
-
-			if (main_loop && emulate_touch && p_event.mouse_motion.button_mask & 1) {
-				InputEventScreenDrag drag_event;
-				drag_event.index = 0;
-				drag_event.x = p_event.mouse_motion.x;
-				drag_event.y = p_event.mouse_motion.y;
-				drag_event.relative_x = p_event.mouse_motion.relative_x;
-				drag_event.relative_y = p_event.mouse_motion.relative_y;
-				drag_event.speed_x = p_event.mouse_motion.speed_x;
-				drag_event.speed_y = p_event.mouse_motion.speed_y;
-
-				InputEvent ev;
-				ev.type = InputEvent::SCREEN_DRAG;
-				ev.screen_drag = drag_event;
-
-				main_loop->input_event(ev);
-			}
-
-		} break;
-		case InputEvent::JOYPAD_BUTTON: {
-
-			int c = _combine_device(p_event.joy_button.button_index, p_event.device);
-
-			if (p_event.joy_button.pressed)
-				joy_buttons_pressed.insert(c);
-			else
-				joy_buttons_pressed.erase(c);
-		} break;
-		case InputEvent::JOYPAD_MOTION: {
-			set_joy_axis(p_event.device, p_event.joy_motion.axis, p_event.joy_motion.axis_value);
-		} break;
+		if (k->is_pressed())
+			keys_pressed.insert(k->get_scancode());
+		else
+			keys_pressed.erase(k->get_scancode());
 	}
 
-	if (!p_event.is_echo()) {
+	Ref<InputEventMouseButton> mb = p_event;
+
+	if (mb.is_valid() && !mb->is_doubleclick()) {
+
+		if (mb->is_pressed())
+			mouse_button_mask |= (1 << mb->get_button_index());
+		else
+			mouse_button_mask &= ~(1 << mb->get_button_index());
+
+		if (main_loop && emulate_touch && mb->get_button_index() == 1) {
+			Ref<InputEventScreenTouch> touch_event;
+			touch_event.instance();
+			touch_event->set_pressed(mb->is_pressed());
+			touch_event->set_position(mb->get_position());
+			main_loop->input_event(touch_event);
+		}
+
+		Point2 pos = mb->get_global_position();
+		if (mouse_pos != pos) {
+			set_mouse_position(pos);
+		}
+	}
+
+	Ref<InputEventMouseMotion> mm = p_event;
+
+	if (mm.is_valid()) {
+
+		if (main_loop && emulate_touch && mm->get_button_mask() & 1) {
+			Ref<InputEventScreenDrag> drag_event;
+			drag_event.instance();
+
+			drag_event->set_position(mm->get_position());
+			drag_event->set_relative(mm->get_relative());
+			drag_event->set_speed(mm->get_speed());
+
+			main_loop->input_event(drag_event);
+		}
+	}
+
+	Ref<InputEventJoypadButton> jb = p_event;
+
+	if (jb.is_valid()) {
+
+		int c = _combine_device(jb->get_button_index(), jb->get_device());
+
+		if (jb->is_pressed())
+			joy_buttons_pressed.insert(c);
+		else
+			joy_buttons_pressed.erase(c);
+	}
+
+	Ref<InputEventJoypadMotion> jm = p_event;
+
+	if (jm.is_valid()) {
+		set_joy_axis(jm->get_device(), jm->get_axis(), jm->get_axis_value());
+	}
+
+	if (!p_event->is_echo()) {
 		for (const Map<StringName, InputMap::Action>::Element *E = InputMap::get_singleton()->get_action_map().front(); E; E = E->next()) {
 
-			if (InputMap::get_singleton()->event_is_action(p_event, E->key()) && is_action_pressed(E->key()) != p_event.is_pressed()) {
+			if (InputMap::get_singleton()->event_is_action(p_event, E->key()) && is_action_pressed(E->key()) != p_event->is_pressed()) {
 				Action action;
 				action.fixed_frame = Engine::get_singleton()->get_fixed_frames();
 				action.idle_frame = Engine::get_singleton()->get_idle_frames();
-				action.pressed = p_event.is_pressed();
+				action.pressed = p_event->is_pressed();
 				action_state[E->key()] = action;
 			}
 		}
@@ -455,16 +397,17 @@ void InputDefault::set_main_loop(MainLoop *p_main_loop) {
 	main_loop = p_main_loop;
 }
 
-void InputDefault::set_mouse_pos(const Point2 &p_posf) {
+void InputDefault::set_mouse_position(const Point2 &p_posf) {
 
 	mouse_speed_track.update(p_posf - mouse_pos);
 	mouse_pos = p_posf;
 	if (custom_cursor.is_valid()) {
-		VisualServer::get_singleton()->cursor_set_pos(get_mouse_pos());
+		//removed, please insist that we implement hardware cursors
+		//		VisualServer::get_singleton()->cursor_set_pos(get_mouse_position());
 	}
 }
 
-Point2 InputDefault::get_mouse_pos() const {
+Point2 InputDefault::get_mouse_position() const {
 
 	return mouse_pos;
 }
@@ -483,7 +426,7 @@ void InputDefault::warp_mouse_pos(const Vector2 &p_to) {
 	OS::get_singleton()->warp_mouse_pos(p_to);
 }
 
-Point2i InputDefault::warp_mouse_motion(const InputEventMouseMotion &p_motion, const Rect2 &p_rect) {
+Point2i InputDefault::warp_mouse_motion(const Ref<InputEventMouseMotion> &p_motion, const Rect2 &p_rect) {
 
 	// The relative distance reported for the next event after a warp is in the boundaries of the
 	// size of the rect on that axis, but it may be greater, in which case there's not problem as fmod()
@@ -494,16 +437,16 @@ Point2i InputDefault::warp_mouse_motion(const InputEventMouseMotion &p_motion, c
 	// detect the warp: if the relative distance is greater than the half of the size of the relevant rect
 	// (checked per each axis), it will be considered as the consequence of a former pointer warp.
 
-	const Point2i rel_sgn(p_motion.relative_x >= 0.0f ? 1 : -1, p_motion.relative_y >= 0.0 ? 1 : -1);
+	const Point2i rel_sgn(p_motion->get_relative().x >= 0.0f ? 1 : -1, p_motion->get_relative().y >= 0.0 ? 1 : -1);
 	const Size2i warp_margin = p_rect.size * 0.5f;
 	const Point2i rel_warped(
-			Math::fmod(p_motion.relative_x + rel_sgn.x * warp_margin.x, p_rect.size.x) - rel_sgn.x * warp_margin.x,
-			Math::fmod(p_motion.relative_y + rel_sgn.y * warp_margin.y, p_rect.size.y) - rel_sgn.y * warp_margin.y);
+			Math::fmod(p_motion->get_relative().x + rel_sgn.x * warp_margin.x, p_rect.size.x) - rel_sgn.x * warp_margin.x,
+			Math::fmod(p_motion->get_relative().y + rel_sgn.y * warp_margin.y, p_rect.size.y) - rel_sgn.y * warp_margin.y);
 
-	const Point2i pos_local = Point2i(p_motion.global_x, p_motion.global_y) - p_rect.pos;
+	const Point2i pos_local = p_motion->get_global_position() - p_rect.position;
 	const Point2i pos_warped(Math::fposmod(pos_local.x, p_rect.size.x), Math::fposmod(pos_local.y, p_rect.size.y));
 	if (pos_warped != pos_local) {
-		OS::get_singleton()->warp_mouse_pos(pos_warped + p_rect.pos);
+		OS::get_singleton()->warp_mouse_pos(pos_warped + p_rect.position);
 	}
 
 	return rel_warped;
@@ -545,6 +488,7 @@ bool InputDefault::is_emulating_touchscreen() const {
 }
 
 void InputDefault::set_custom_mouse_cursor(const RES &p_cursor, const Vector2 &p_hotspot) {
+	/* no longer supported, leaving this for reference to anyone who might want to implement hardware cursors
 	if (custom_cursor == p_cursor)
 		return;
 
@@ -552,19 +496,21 @@ void InputDefault::set_custom_mouse_cursor(const RES &p_cursor, const Vector2 &p
 
 	if (p_cursor.is_null()) {
 		set_mouse_mode(MOUSE_MODE_VISIBLE);
-		VisualServer::get_singleton()->cursor_set_visible(false);
+		//removed, please insist us to implement hardare cursors
+		//VisualServer::get_singleton()->cursor_set_visible(false);
 	} else {
 		Ref<AtlasTexture> atex = custom_cursor;
 		Rect2 region = atex.is_valid() ? atex->get_region() : Rect2();
 		set_mouse_mode(MOUSE_MODE_HIDDEN);
 		VisualServer::get_singleton()->cursor_set_visible(true);
 		VisualServer::get_singleton()->cursor_set_texture(custom_cursor->get_rid(), p_hotspot, 0, region);
-		VisualServer::get_singleton()->cursor_set_pos(get_mouse_pos());
+		VisualServer::get_singleton()->cursor_set_pos(get_mouse_position());
 	}
+	*/
 }
 
 void InputDefault::set_mouse_in_window(bool p_in_window) {
-
+	/* no longer supported, leaving this for reference to anyone who might want to implement hardware cursors
 	if (custom_cursor.is_valid()) {
 
 		if (p_in_window) {
@@ -575,6 +521,7 @@ void InputDefault::set_mouse_in_window(bool p_in_window) {
 			VisualServer::get_singleton()->cursor_set_visible(false);
 		}
 	}
+	*/
 }
 
 // from github.com/gabomdq/SDL_GameControllerDB
@@ -686,6 +633,7 @@ static const char *s_ControllerMappings[] = {
 	"030000004c0500006802000011010000,PS3 Controller,a:b14,b:b13,back:b0,dpdown:b6,dpleft:b7,dpright:b5,dpup:b4,guide:b16,leftshoulder:b10,leftstick:b1,lefttrigger:b8,leftx:a0,lefty:a1,rightshoulder:b11,rightstick:b2,righttrigger:b9,rightx:a2,righty:a3,start:b3,x:b15,y:b12,",
 	"030000004c050000a00b000011010000,Sony DualShock 4 Wireless Adaptor,a:b1,b:b2,y:b3,x:b0,start:b9,guide:b12,back:b13,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpleft:h0.8,dpdown:h0.4,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a5,lefttrigger:a3,righttrigger:a4,",
 	"030000004c050000c405000011010000,Sony DualShock 4,a:b1,b:b2,y:b3,x:b0,start:b9,guide:b12,back:b8,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpleft:h0.8,dpdown:h0.4,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a5,lefttrigger:a3,righttrigger:a4,",
+	"030000004c050000c405000011810000,Sony Computer Entertainment Wireless Controller,leftx:a0,lefty:a1,dpdown:h0.4,rightstick:h0.1,rightshoulder:b5,rightx:a3,start:b9,righty:a4,dpleft:h0.8,lefttrigger:a2,x:b3,dpup:h0.1,back:b8,leftstick:b11,leftshoulder:b4,y:b2,a:b0,dpright:h0.2,righttrigger:a5,b:b1,",
 	"030000004c050000cc09000011010000,Sony DualShock 4 V2,a:b1,b:b2,y:b3,x:b0,start:b9,guide:b12,back:b13,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpleft:h0.8,dpdown:h0.4,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a5,lefttrigger:a3,righttrigger:a4,",
 	"030000004f04000000b3000010010000,Thrustmaster Firestorm Dual Power,a:b0,b:b2,y:b3,x:b1,start:b10,guide:b8,back:b9,leftstick:b11,rightstick:b12,leftshoulder:b4,rightshoulder:b6,dpup:h0.1,dpleft:h0.8,dpdown:h0.4,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b5,righttrigger:b7,",
 	"030000004f04000008d0000000010000,Thrustmaster Run N Drive  Wireless,a:b1,b:b2,x:b0,y:b3,start:b9,back:b8,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpleft:h0.8,dpdown:h0.4,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a5,lefttrigger:b6,righttrigger:b7,",
@@ -755,6 +703,7 @@ static const char *s_ControllerMappings[] = {
 	"05000000102800000900000000010000,8Bitdo SFC30 GamePad,x:b4,a:b1,b:b0,y:b3,back:b10,start:b11,leftshoulder:b6,rightshoulder:b7,leftx:a0,lefty:a1,",
 	"05000000362800000100000002010000,OUYA Game Controller,a:b0,b:b3,dpdown:b9,dpleft:b10,dpright:b11,dpup:b8,guide:b14,leftshoulder:b4,leftstick:b6,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b7,righttrigger:a5,rightx:a3,righty:a4,x:b1,y:b2,",
 	"05000000362800000100000003010000,OUYA Game Controller,a:b0,b:b3,dpdown:b9,dpleft:b10,dpright:b11,dpup:b8,guide:b14,leftshoulder:b4,leftstick:b6,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b7,righttrigger:a5,rightx:a3,righty:a4,x:b1,y:b2,",
+	"05000000362800000100000004010000,OUYA Game Controller,leftx:a0,lefty:a1,dpdown:b9,rightstick:b7,rightshoulder:b5,rightx:a3,start:b16,righty:a4,dpleft:b10,lefttrigger:b12,x:b1,dpup:b8,back:b14,leftstick:b6,leftshoulder:b4,y:b2,a:b0,dpright:b11,righttrigger:b13,b:b3,",
 	"05000000380700006652000025010000,Mad Catz C.T.R.L.R ,x:b0,a:b1,b:b2,y:b3,back:b8,guide:b12,start:b9,dpleft:h0.8,dpdown:h0.4,dpright:h0.2,dpup:h0.1,leftshoulder:b4,lefttrigger:b6,rightshoulder:b5,righttrigger:b7,leftstick:b10,rightstick:b11,leftx:a0,lefty:a1,rightx:a2,righty:a3,",
 	"0500000047532047616d657061640000,GameStop Gamepad,a:b0,b:b1,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:,leftshoulder:b4,leftstick:b10,lefttrigger:b6,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11,righttrigger:b7,rightx:a2,righty:a3,start:b9,x:b2,y:b3,",
 	"050000004c0500006802000000010000,PS3 Controller (Bluetooth),a:b14,b:b13,y:b12,x:b15,start:b3,guide:b16,back:b0,leftstick:b1,rightstick:b2,leftshoulder:b10,rightshoulder:b11,dpup:b4,dpleft:b7,dpdown:b6,dpright:b5,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b8,righttrigger:b9,",
@@ -775,6 +724,7 @@ static const char *s_ControllerMappings[] = {
 	"4e564944494120436f72706f72617469,NVIDIA Controller,a:b0,b:b1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,leftshoulder:b9,leftstick:b7,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b10,rightstick:b8,righttrigger:a5,rightx:a2,righty:a3,start:b6,x:b2,y:b3,",
 	"532e542e442e20496e74657261637420,3dfx InterAct HammerHead FX,leftx:a0,lefty:a1,dpdown:h0.4,rightstick:b25,rightshoulder:b27,rightx:a2,start:b31,righty:a3,dpleft:h0.8,lefttrigger:b28,x:b20,dpup:h0.1,back:b30,leftstick:b22,leftshoulder:b26,y:b21,a:b23,dpright:h0.2,righttrigger:b29,b:b24,",
 	"506572666f726d616e63652044657369,PDP Rock Candy Wireless Controller for PS3,leftx:a0,lefty:a1,dpdown:h0.4,rightstick:b6,rightshoulder:b18,rightx:a2,start:b16,righty:a3,dpleft:h0.8,lefttrigger:b9,x:b0,dpup:h0.1,back:h0.2,leftstick:b4,leftshoulder:b3,y:b2,a:b1,dpright:h0.2,righttrigger:b10,b:b17,",
+	"4f5559412047616d6520436f6e74726f,OUYA Game Controller,leftx:a1,lefty:a3,dpdown:b12,rightstick:b8,rightshoulder:b10,rightx:a6,start:b-86,righty:a7,dpleft:b13,lefttrigger:b15,x:b2,dpup:b11,leftstick:b7,leftshoulder:b9,y:b3,a:b0,dpright:b14,righttrigger:b16,b:b1,",
 #endif
 
 #ifdef JAVASCRIPT_ENABLED
@@ -879,6 +829,8 @@ void InputDefault::joy_axis(int p_device, int p_axis, const JoyAxis &p_value) {
 
 	_THREAD_SAFE_METHOD_;
 
+	ERR_FAIL_INDEX(p_axis, JOY_AXIS_MAX);
+
 	Joypad &joy = joy_names[p_device];
 
 	if (joy.last_axis[p_axis] == p_value.value) {
@@ -896,8 +848,14 @@ void InputDefault::joy_axis(int p_device, int p_axis, const JoyAxis &p_value) {
 		return;
 	}
 
-	if (ABS(joy.last_axis[p_axis]) > 0.5 && joy.last_axis[p_axis] * p_value.value < 0) {
-		//changed direction quickly, insert fake event to release pending inputmap actions
+	//when changing direction quickly, insert fake event to release pending inputmap actions
+	float last = joy.last_axis[p_axis];
+	if (p_value.min == 0 && (last < 0.25 || last > 0.75) && (last - 0.5) * (p_value.value - 0.5) < 0) {
+		JoyAxis jx;
+		jx.min = p_value.min;
+		jx.value = p_value.value < 0.5 ? 0.6 : 0.4;
+		joy_axis(p_device, p_axis, jx);
+	} else if (ABS(last) > 0.5 && last * p_value.value < 0) {
 		JoyAxis jx;
 		jx.min = p_value.min;
 		jx.value = p_value.value < 0 ? 0.1 : -0.1;
@@ -909,6 +867,7 @@ void InputDefault::joy_axis(int p_device, int p_axis, const JoyAxis &p_value) {
 
 	if (joy.mapping == -1) {
 		_axis_event(p_device, p_axis, val);
+		return;
 	};
 
 	Map<int, JoyEvent>::Element *el = map_db[joy.mapping].axis.find(p_axis);
@@ -1016,22 +975,22 @@ void InputDefault::joy_hat(int p_device, int p_val) {
 
 void InputDefault::_button_event(int p_device, int p_index, bool p_pressed) {
 
-	InputEvent ievent;
-	ievent.type = InputEvent::JOYPAD_BUTTON;
-	ievent.device = p_device;
-	ievent.joy_button.button_index = p_index;
-	ievent.joy_button.pressed = p_pressed;
+	Ref<InputEventJoypadButton> ievent;
+	ievent.instance();
+	ievent->set_device(p_device);
+	ievent->set_button_index(p_index);
+	ievent->set_pressed(p_pressed);
 
 	parse_input_event(ievent);
 };
 
 void InputDefault::_axis_event(int p_device, int p_axis, float p_value) {
 
-	InputEvent ievent;
-	ievent.type = InputEvent::JOYPAD_MOTION;
-	ievent.device = p_device;
-	ievent.joy_motion.axis = p_axis;
-	ievent.joy_motion.axis_value = p_value;
+	Ref<InputEventJoypadMotion> ievent;
+	ievent.instance();
+	ievent->set_device(p_device);
+	ievent->set_axis(p_axis);
+	ievent->set_axis_value(p_value);
 
 	parse_input_event(ievent);
 };

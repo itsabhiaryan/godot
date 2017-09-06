@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -57,11 +58,9 @@ bool Variant::booleanize(bool &r_valid) const {
 		case BASIS:
 		case TRANSFORM:
 		case COLOR:
-		case IMAGE: r_valid = false; return false;
 		case _RID: return (*reinterpret_cast<const RID *>(_data._mem)).is_valid();
 		case OBJECT: return _get_obj().obj;
 		case NODE_PATH: return (*reinterpret_cast<const NodePath *>(_data._mem)) != NodePath();
-		case INPUT_EVENT:
 		case DICTIONARY:
 		case ARRAY:
 		case POOL_BYTE_ARRAY:
@@ -282,7 +281,6 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a, const Variant &
 					DEFAULT_OP_PTRREF(==, TRANSFORM, _transform);
 
 					DEFAULT_OP_LOCALMEM(==, COLOR, Color);
-					DEFAULT_OP_PTRREF(==, IMAGE, _image);
 					DEFAULT_OP_STR(==, NODE_PATH, NodePath);
 					DEFAULT_OP_LOCALMEM(==, _RID, RID);
 				case OBJECT: {
@@ -292,7 +290,6 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a, const Variant &
 					if (p_b.type == NIL)
 						_RETURN(!p_a._get_obj().obj);
 				} break;
-					DEFAULT_OP_PTRREF(==, INPUT_EVENT, _input_event);
 
 				case DICTIONARY: {
 
@@ -371,7 +368,7 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a, const Variant &
 				DEFAULT_OP_FAIL(TRANSFORM);
 
 				DEFAULT_OP_FAIL(COLOR);
-				DEFAULT_OP_FAIL(IMAGE);
+
 				DEFAULT_OP_FAIL(NODE_PATH);
 				DEFAULT_OP_LOCALMEM(<, _RID, RID);
 				case OBJECT: {
@@ -379,7 +376,6 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a, const Variant &
 					if (p_b.type == OBJECT)
 						_RETURN((p_a._get_obj().obj < p_b._get_obj().obj));
 				} break;
-					DEFAULT_OP_FAIL(INPUT_EVENT);
 					DEFAULT_OP_FAIL(DICTIONARY);
 				case ARRAY: {
 
@@ -436,7 +432,7 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a, const Variant &
 				DEFAULT_OP_FAIL(TRANSFORM);
 
 				DEFAULT_OP_FAIL(COLOR);
-				DEFAULT_OP_FAIL(IMAGE);
+
 				DEFAULT_OP_FAIL(NODE_PATH);
 				DEFAULT_OP_LOCALMEM(<=, _RID, RID);
 				case OBJECT: {
@@ -444,7 +440,6 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a, const Variant &
 					if (p_b.type == OBJECT)
 						_RETURN((p_a._get_obj().obj <= p_b._get_obj().obj));
 				} break;
-					DEFAULT_OP_FAIL(INPUT_EVENT);
 					DEFAULT_OP_FAIL(DICTIONARY);
 					DEFAULT_OP_FAIL(ARRAY);
 					DEFAULT_OP_FAIL(POOL_BYTE_ARRAY);
@@ -499,11 +494,10 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a, const Variant &
 				DEFAULT_OP_FAIL(TRANSFORM);
 
 				DEFAULT_OP_FAIL(COLOR);
-				DEFAULT_OP_FAIL(IMAGE);
+
 				DEFAULT_OP_FAIL(NODE_PATH);
 				DEFAULT_OP_FAIL(_RID);
 				DEFAULT_OP_FAIL(OBJECT);
-				DEFAULT_OP_FAIL(INPUT_EVENT);
 				DEFAULT_OP_FAIL(DICTIONARY);
 
 				case ARRAY: {
@@ -556,11 +550,10 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a, const Variant &
 				DEFAULT_OP_FAIL(TRANSFORM);
 
 				DEFAULT_OP_FAIL(COLOR);
-				DEFAULT_OP_FAIL(IMAGE);
+
 				DEFAULT_OP_FAIL(NODE_PATH);
 				DEFAULT_OP_FAIL(_RID);
 				DEFAULT_OP_FAIL(OBJECT);
-				DEFAULT_OP_FAIL(INPUT_EVENT);
 				DEFAULT_OP_FAIL(DICTIONARY);
 				DEFAULT_OP_FAIL(ARRAY);
 				DEFAULT_OP_FAIL(POOL_BYTE_ARRAY);
@@ -653,11 +646,10 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a, const Variant &
 					return;
 				} break;
 					DEFAULT_OP_FAIL(COLOR);
-					DEFAULT_OP_FAIL(IMAGE);
+
 					DEFAULT_OP_FAIL(NODE_PATH);
 					DEFAULT_OP_FAIL(_RID);
 					DEFAULT_OP_FAIL(OBJECT);
-					DEFAULT_OP_FAIL(INPUT_EVENT);
 					DEFAULT_OP_FAIL(DICTIONARY);
 					DEFAULT_OP_FAIL(ARRAY);
 					DEFAULT_OP_FAIL(POOL_BYTE_ARRAY);
@@ -726,11 +718,10 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a, const Variant &
 					DEFAULT_OP_FAIL(TRANSFORM);
 
 					DEFAULT_OP_FAIL(COLOR);
-					DEFAULT_OP_FAIL(IMAGE);
+
 					DEFAULT_OP_FAIL(NODE_PATH);
 					DEFAULT_OP_FAIL(_RID);
 					DEFAULT_OP_FAIL(OBJECT);
-					DEFAULT_OP_FAIL(INPUT_EVENT);
 					DEFAULT_OP_FAIL(DICTIONARY);
 					DEFAULT_OP_FAIL(ARRAY);
 					DEFAULT_OP_FAIL(POOL_BYTE_ARRAY);
@@ -768,11 +759,10 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a, const Variant &
 				DEFAULT_OP_LOCALMEM_POS(VECTOR2, Vector2);
 
 				DEFAULT_OP_FAIL(COLOR);
-				DEFAULT_OP_FAIL(IMAGE);
+
 				DEFAULT_OP_FAIL(NODE_PATH);
 				DEFAULT_OP_FAIL(_RID);
 				DEFAULT_OP_FAIL(OBJECT);
-				DEFAULT_OP_FAIL(INPUT_EVENT);
 				DEFAULT_OP_FAIL(DICTIONARY);
 				DEFAULT_OP_FAIL(ARRAY);
 				DEFAULT_OP_FAIL(POOL_BYTE_ARRAY);
@@ -808,11 +798,10 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a, const Variant &
 				DEFAULT_OP_FAIL(TRANSFORM);
 
 				DEFAULT_OP_FAIL(COLOR);
-				DEFAULT_OP_FAIL(IMAGE);
+
 				DEFAULT_OP_FAIL(NODE_PATH);
 				DEFAULT_OP_FAIL(_RID);
 				DEFAULT_OP_FAIL(OBJECT);
-				DEFAULT_OP_FAIL(INPUT_EVENT);
 				DEFAULT_OP_FAIL(DICTIONARY);
 				DEFAULT_OP_FAIL(ARRAY);
 				DEFAULT_OP_FAIL(POOL_BYTE_ARRAY);
@@ -1120,11 +1109,11 @@ void Variant::set(const Variant &p_index, const Variant &p_value, bool *r_valid)
 
 				const String *str = reinterpret_cast<const String *>(p_index._data._mem);
 				Vector2 *v = reinterpret_cast<Vector2 *>(_data._mem);
-				if (*str == "x" || *str == "width") {
+				if (*str == "x") {
 					valid = true;
 					v->x = p_value;
 					return;
-				} else if (*str == "y" || *str == "height") {
+				} else if (*str == "y") {
 					valid = true;
 					v->y = p_value;
 					return;
@@ -1142,9 +1131,9 @@ void Variant::set(const Variant &p_index, const Variant &p_value, bool *r_valid)
 
 				const String *str = reinterpret_cast<const String *>(p_index._data._mem);
 				Rect2 *v = reinterpret_cast<Rect2 *>(_data._mem);
-				if (*str == "pos") {
+				if (*str == "position") {
 					valid = true;
-					v->pos = p_value;
+					v->position = p_value;
 					return;
 				} else if (*str == "size") {
 					valid = true;
@@ -1152,7 +1141,7 @@ void Variant::set(const Variant &p_index, const Variant &p_value, bool *r_valid)
 					return;
 				} else if (*str == "end") {
 					valid = true;
-					v->size = Vector2(p_value) - v->pos;
+					v->size = Vector2(p_value) - v->position;
 					return;
 				}
 			}
@@ -1188,7 +1177,7 @@ void Variant::set(const Variant &p_index, const Variant &p_value, bool *r_valid)
 					valid = true;
 					v->elements[1] = p_value;
 					return;
-				} else if (*str == "o") {
+				} else if (*str == "origin") {
 					valid = true;
 					v->elements[2] = p_value;
 					return;
@@ -1304,7 +1293,7 @@ void Variant::set(const Variant &p_index, const Variant &p_value, bool *r_valid)
 				}
 			}
 
-		} break;
+		} break; // 10
 		case RECT3: {
 
 			if (p_value.type != Variant::VECTOR3)
@@ -1315,9 +1304,9 @@ void Variant::set(const Variant &p_index, const Variant &p_value, bool *r_valid)
 
 				const String *str = reinterpret_cast<const String *>(p_index._data._mem);
 				Rect3 *v = _data._rect3;
-				if (*str == "pos") {
+				if (*str == "position") {
 					valid = true;
-					v->pos = p_value;
+					v->position = p_value;
 					return;
 				} else if (*str == "size") {
 					valid = true;
@@ -1325,11 +1314,11 @@ void Variant::set(const Variant &p_index, const Variant &p_value, bool *r_valid)
 					return;
 				} else if (*str == "end") {
 					valid = true;
-					v->size = Vector3(p_value) - v->pos;
+					v->size = Vector3(p_value) - v->position;
 					return;
 				}
 			}
-		} break; //sorry naming convention fail :( not like it's used often // 10
+		} break;
 		case BASIS: {
 
 			if (p_value.type != Variant::VECTOR3)
@@ -1479,8 +1468,6 @@ void Variant::set(const Variant &p_index, const Variant &p_value, bool *r_valid)
 			}
 
 		} break;
-		case IMAGE: {
-		} break;
 		case NODE_PATH: {
 		} break; // 15
 		case _RID: {
@@ -1510,402 +1497,19 @@ void Variant::set(const Variant &p_index, const Variant &p_value, bool *r_valid)
 				return obj->set(p_index, p_value, r_valid);
 			}
 		} break;
-		case INPUT_EVENT: {
-
-			InputEvent &ie = *_data._input_event;
-
-			if (p_index.get_type() != Variant::STRING)
-				return;
-
-			const String &str = *reinterpret_cast<const String *>(p_index._data._mem);
-
-			if (str == "type") {
-
-				if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-					return;
-
-				int type = p_value;
-				if (type < 0 || type >= InputEvent::TYPE_MAX)
-					return; //fail
-				valid = true;
-				ie.type = InputEvent::Type(type);
-				return;
-			} else if (str == "device") {
-
-				if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-					return;
-
-				valid = true;
-				ie.device = p_value;
-				return;
-			} else if (str == "ID") {
-
-				if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-					return;
-
-				valid = true;
-				ie.ID = p_value;
-				return;
-			}
-
-			if (ie.type == InputEvent::KEY || ie.type == InputEvent::MOUSE_BUTTON || ie.type == InputEvent::MOUSE_MOTION) {
-
-				if (str == "shift") {
-
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL && p_value.type != Variant::BOOL)
-						return;
-
-					valid = true;
-					ie.key.mod.shift = p_value;
-					return;
-				}
-				if (str == "alt") {
-
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL && p_value.type != Variant::BOOL)
-						return;
-
-					valid = true;
-					ie.key.mod.alt = p_value;
-					return;
-				}
-				if (str == "control") {
-
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL && p_value.type != Variant::BOOL)
-						return;
-
-					valid = true;
-					ie.key.mod.control = p_value;
-					return;
-				}
-				if (str == "meta") {
-
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL && p_value.type != Variant::BOOL)
-						return;
-
-					valid = true;
-					ie.key.mod.meta = p_value;
-					return;
-				}
-			}
-
-			if (ie.type == InputEvent::KEY) {
-
-				if (str == "pressed") {
-
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL && p_value.type != Variant::BOOL)
-						return;
-
-					valid = true;
-					ie.key.pressed = p_value;
-					return;
-				} else if (str == "scancode") {
-
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-						return;
-
-					valid = true;
-					ie.key.scancode = p_value;
-					return;
-				} else if (str == "unicode") {
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-						return;
-					valid = true;
-					ie.key.unicode = p_value;
-					return;
-				} else if (str == "echo") {
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL && p_value.type != Variant::BOOL)
-						return;
-
-					valid = true;
-					ie.key.echo = p_value;
-					return;
-				}
-			}
-
-			if (ie.type == InputEvent::MOUSE_MOTION || ie.type == InputEvent::MOUSE_BUTTON) {
-
-				if (str == "button_mask") {
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-						return;
-					valid = true;
-					ie.mouse_button.button_mask = p_value;
-					return;
-				} else if (str == "x") {
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-						return;
-					valid = true;
-					ie.mouse_button.x = p_value;
-					return;
-				} else if (str == "y") {
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-						return;
-					valid = true;
-					ie.mouse_button.y = p_value;
-					return;
-				} else if (str == "pos") {
-					if (p_value.type != Variant::VECTOR2)
-						return;
-					valid = true;
-					Point2 value = p_value;
-					ie.mouse_button.x = value.x;
-					ie.mouse_button.y = value.y;
-					return;
-				} else if (str == "global_x") {
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-						return;
-					valid = true;
-					ie.mouse_button.global_x = p_value;
-					return;
-				} else if (str == "global_y") {
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-						return;
-					valid = true;
-					ie.mouse_button.global_y = p_value;
-					return;
-				} else if (str == "global_pos") {
-					if (p_value.type != Variant::VECTOR2)
-						return;
-					valid = true;
-					Point2 value = p_value;
-					ie.mouse_button.global_x = value.x;
-					ie.mouse_button.global_y = value.y;
-					return;
-				} /*else if (str=="pointer_index") {
-					valid=true;
-					return ie.mouse_button.pointer_index;
-				}*/
-
-				if (ie.type == InputEvent::MOUSE_MOTION) {
-
-					if (str == "relative_x") {
-						if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-							return;
-						valid = true;
-						ie.mouse_motion.relative_x = p_value;
-						return;
-					} else if (str == "relative_y") {
-						if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-							return;
-						valid = true;
-						ie.mouse_motion.relative_y = p_value;
-						return;
-					} else if (str == "relative_pos") {
-						if (p_value.type != Variant::VECTOR2)
-							return;
-						valid = true;
-						Point2 value = p_value;
-						ie.mouse_motion.relative_x = value.x;
-						ie.mouse_motion.relative_y = value.y;
-						return;
-					}
-
-					if (str == "speed_x") {
-						if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-							return;
-						valid = true;
-						ie.mouse_motion.speed_x = p_value;
-						return;
-					} else if (str == "speed_y") {
-						if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-							return;
-						valid = true;
-						ie.mouse_motion.speed_y = p_value;
-						return;
-					} else if (str == "speed") {
-						if (p_value.type != Variant::VECTOR2)
-							return;
-						valid = true;
-						Point2 value = p_value;
-						ie.mouse_motion.speed_x = value.x;
-						ie.mouse_motion.speed_y = value.y;
-						return;
-					}
-
-				} else if (ie.type == InputEvent::MOUSE_BUTTON) {
-
-					if (str == "button_index") {
-						if (p_value.type != Variant::INT && p_value.type != Variant::REAL)
-							return;
-						valid = true;
-						ie.mouse_button.button_index = p_value;
-						return;
-					} else if (str == "pressed") {
-						if (p_value.type != Variant::INT && p_value.type != Variant::REAL && p_value.type != Variant::BOOL)
-							return;
-						valid = true;
-						ie.mouse_button.pressed = p_value;
-						return;
-					} else if (str == "doubleclick") {
-						if (p_value.type != Variant::INT && p_value.type != Variant::REAL && p_value.type != Variant::BOOL)
-							return;
-						valid = true;
-						ie.mouse_button.doubleclick = p_value;
-						return;
-					}
-				}
-			}
-
-			if (ie.type == InputEvent::JOYPAD_BUTTON) {
-
-				if (str == "button_index") {
-					if (p_value.type != Variant::REAL && p_value.type != Variant::INT)
-						return;
-					valid = true;
-					ie.joy_button.button_index = p_value;
-					return;
-				}
-				if (str == "pressed") {
-					if (p_value.type != Variant::INT && p_value.type != Variant::REAL && p_value.type != Variant::BOOL)
-						return;
-
-					valid = true;
-					ie.joy_button.pressed = p_value;
-					return;
-				}
-				if (str == "pressure") {
-					if (p_value.type != Variant::REAL && p_value.type != Variant::INT)
-						return;
-					valid = true;
-					ie.joy_button.pressure = p_value;
-					return;
-				}
-			}
-
-			if (ie.type == InputEvent::JOYPAD_MOTION) {
-
-				if (str == "axis") {
-					if (p_value.type != Variant::REAL && p_value.type != Variant::INT)
-						return;
-					valid = true;
-					ie.joy_motion.axis = p_value;
-					return;
-				}
-				if (str == "value") {
-					if (p_value.type != Variant::REAL && p_value.type != Variant::INT)
-						return;
-					valid = true;
-					ie.joy_motion.axis_value = p_value;
-					return;
-				}
-			}
-
-			if (ie.type == InputEvent::SCREEN_TOUCH) {
-
-				if (str == "index") {
-					valid = true;
-					ie.screen_touch.index = p_value;
-					return;
-				}
-				if (str == "x") {
-					valid = true;
-					ie.screen_touch.x = p_value;
-					return;
-				}
-				if (str == "y") {
-					valid = true;
-					ie.screen_touch.y = p_value;
-					return;
-				}
-				if (str == "pos") {
-					valid = true;
-					Vector2 v = p_value;
-					ie.screen_touch.x = v.x;
-					ie.screen_touch.y = v.y;
-					return;
-				}
-				if (str == "pressed") {
-					valid = true;
-					ie.screen_touch.pressed = p_value;
-					return;
-				}
-			}
-
-			if (ie.type == InputEvent::SCREEN_DRAG) {
-
-				if (str == "index") {
-					valid = true;
-					ie.screen_drag.index = p_value;
-					return;
-				}
-				if (str == "x") {
-					valid = true;
-					ie.screen_drag.x = p_value;
-					return;
-				}
-				if (str == "y") {
-					valid = true;
-					ie.screen_drag.y = p_value;
-					return;
-				}
-				if (str == "pos") {
-					valid = true;
-					Vector2 v = p_value;
-					ie.screen_drag.x = v.x;
-					ie.screen_drag.y = v.y;
-					return;
-				}
-				if (str == "relative_x") {
-					valid = true;
-					ie.screen_drag.relative_x = p_value;
-					return;
-				}
-				if (str == "relative_y") {
-					valid = true;
-					ie.screen_drag.relative_y = p_value;
-					return;
-				}
-				if (str == "relative_pos") {
-					valid = true;
-					Vector2 v = p_value;
-					ie.screen_drag.relative_x = v.x;
-					ie.screen_drag.relative_y = v.y;
-					return;
-				}
-				if (str == "speed_x") {
-					valid = true;
-					ie.screen_drag.speed_x = p_value;
-					return;
-				}
-				if (str == "speed_y") {
-					valid = true;
-					ie.screen_drag.speed_y = p_value;
-					return;
-				}
-				if (str == "speed") {
-					valid = true;
-					Vector2 v = p_value;
-					ie.screen_drag.speed_x = v.x;
-					ie.screen_drag.speed_y = v.y;
-					return;
-				}
-			}
-			if (ie.type == InputEvent::ACTION) {
-
-				if (str == "action") {
-					valid = true;
-					ie.action.action = p_value;
-					return;
-				} else if (str == "pressed") {
-					valid = true;
-					ie.action.pressed = p_value;
-					return;
-				}
-			}
-
-		} break;
 		case DICTIONARY: {
 
 			Dictionary *dic = reinterpret_cast<Dictionary *>(_data._mem);
 			dic->operator[](p_index) = p_value;
 			valid = true; //always valid, i guess? should this really be ok?
 			return;
-		} break; // 20
-			DEFAULT_OP_ARRAY_CMD(ARRAY, Array, ;, (*arr)[index] = p_value; return )
+		} break;
+			DEFAULT_OP_ARRAY_CMD(ARRAY, Array, ;, (*arr)[index] = p_value; return ) // 20
 			DEFAULT_OP_DVECTOR_SET(POOL_BYTE_ARRAY, uint8_t, p_value.type != Variant::REAL && p_value.type != Variant::INT)
 			DEFAULT_OP_DVECTOR_SET(POOL_INT_ARRAY, int, p_value.type != Variant::REAL && p_value.type != Variant::INT)
 			DEFAULT_OP_DVECTOR_SET(POOL_REAL_ARRAY, real_t, p_value.type != Variant::REAL && p_value.type != Variant::INT)
-			DEFAULT_OP_DVECTOR_SET(POOL_STRING_ARRAY, String, p_value.type != Variant::STRING) // 25
-			DEFAULT_OP_DVECTOR_SET(POOL_VECTOR2_ARRAY, Vector2, p_value.type != Variant::VECTOR2)
+			DEFAULT_OP_DVECTOR_SET(POOL_STRING_ARRAY, String, p_value.type != Variant::STRING)
+			DEFAULT_OP_DVECTOR_SET(POOL_VECTOR2_ARRAY, Vector2, p_value.type != Variant::VECTOR2) // 25
 			DEFAULT_OP_DVECTOR_SET(POOL_VECTOR3_ARRAY, Vector3, p_value.type != Variant::VECTOR3)
 			DEFAULT_OP_DVECTOR_SET(POOL_COLOR_ARRAY, Color, p_value.type != Variant::COLOR)
 		default: return;
@@ -1968,10 +1572,10 @@ Variant Variant::get(const Variant &p_index, bool *r_valid) const {
 
 				const String *str = reinterpret_cast<const String *>(p_index._data._mem);
 				const Vector2 *v = reinterpret_cast<const Vector2 *>(_data._mem);
-				if (*str == "x" || *str == "width") {
+				if (*str == "x") {
 					valid = true;
 					return v->x;
-				} else if (*str == "y" || *str == "height") {
+				} else if (*str == "y") {
 					valid = true;
 					return v->y;
 				}
@@ -1985,15 +1589,15 @@ Variant Variant::get(const Variant &p_index, bool *r_valid) const {
 
 				const String *str = reinterpret_cast<const String *>(p_index._data._mem);
 				const Rect2 *v = reinterpret_cast<const Rect2 *>(_data._mem);
-				if (*str == "pos") {
+				if (*str == "position") {
 					valid = true;
-					return v->pos;
+					return v->position;
 				} else if (*str == "size") {
 					valid = true;
 					return v->size;
 				} else if (*str == "end") {
 					valid = true;
-					return v->size + v->pos;
+					return v->size + v->position;
 				}
 			}
 		} break;
@@ -2053,7 +1657,7 @@ Variant Variant::get(const Variant &p_index, bool *r_valid) const {
 				} else if (*str == "y") {
 					valid = true;
 					return v->elements[1];
-				} else if (*str == "o") {
+				} else if (*str == "origin") {
 					valid = true;
 					return v->elements[2];
 				}
@@ -2106,7 +1710,7 @@ Variant Variant::get(const Variant &p_index, bool *r_valid) const {
 				}
 			}
 
-		} break;
+		} break; // 10
 		case RECT3: {
 
 			if (p_index.get_type() == Variant::STRING) {
@@ -2114,18 +1718,18 @@ Variant Variant::get(const Variant &p_index, bool *r_valid) const {
 
 				const String *str = reinterpret_cast<const String *>(p_index._data._mem);
 				const Rect3 *v = _data._rect3;
-				if (*str == "pos") {
+				if (*str == "position") {
 					valid = true;
-					return v->pos;
+					return v->position;
 				} else if (*str == "size") {
 					valid = true;
 					return v->size;
 				} else if (*str == "end") {
 					valid = true;
-					return v->size + v->pos;
+					return v->size + v->position;
 				}
 			}
-		} break; //sorry naming convention fail :( not like it's used often // 10
+		} break;
 		case BASIS: {
 
 			if (p_index.get_type() == Variant::INT || p_index.get_type() == Variant::REAL) {
@@ -2238,8 +1842,6 @@ Variant Variant::get(const Variant &p_index, bool *r_valid) const {
 			}
 
 		} break;
-		case IMAGE: {
-		} break;
 		case NODE_PATH: {
 		} break; // 15
 		case _RID: {
@@ -2266,235 +1868,6 @@ Variant Variant::get(const Variant &p_index, bool *r_valid) const {
 			}
 
 		} break;
-		case INPUT_EVENT: {
-
-			InputEvent ie = operator InputEvent();
-
-			if (p_index.get_type() != Variant::STRING)
-				break;
-
-			const String &str = *reinterpret_cast<const String *>(p_index._data._mem);
-
-			if (str == "type") {
-				valid = true;
-				return ie.type;
-			} else if (str == "device") {
-				valid = true;
-				return ie.device;
-			} else if (str == "ID") {
-				valid = true;
-				return ie.ID;
-			}
-
-			if (ie.type == InputEvent::KEY || ie.type == InputEvent::MOUSE_BUTTON || ie.type == InputEvent::MOUSE_MOTION) {
-
-				if (str == "shift") {
-					valid = true;
-					return ie.key.mod.shift;
-				}
-				if (str == "alt") {
-					valid = true;
-					return ie.key.mod.alt;
-				}
-				if (str == "control") {
-					valid = true;
-					return ie.key.mod.control;
-				}
-				if (str == "meta") {
-					valid = true;
-					return ie.key.mod.meta;
-				}
-			}
-
-			if (ie.type == InputEvent::KEY) {
-
-				if (str == "pressed") {
-					valid = true;
-					return ie.key.pressed;
-				} else if (str == "scancode") {
-					valid = true;
-					return ie.key.scancode;
-				} else if (str == "unicode") {
-					valid = true;
-					return ie.key.unicode;
-				} else if (str == "echo") {
-					valid = true;
-					return ie.key.echo;
-				}
-			}
-
-			if (ie.type == InputEvent::MOUSE_MOTION || ie.type == InputEvent::MOUSE_BUTTON) {
-
-				if (str == "button_mask") {
-					valid = true;
-					return ie.mouse_button.button_mask;
-				} else if (str == "x") {
-					valid = true;
-					return ie.mouse_button.x;
-				} else if (str == "y") {
-					valid = true;
-					return ie.mouse_button.y;
-				} else if (str == "pos") {
-					valid = true;
-					return Point2(ie.mouse_button.x, ie.mouse_button.y);
-				} else if (str == "global_x") {
-					valid = true;
-					return ie.mouse_button.global_x;
-				} else if (str == "global_y") {
-					valid = true;
-					return ie.mouse_button.global_y;
-				} else if (str == "global_pos") {
-					valid = true;
-					return Point2(ie.mouse_button.global_x, ie.mouse_button.global_y);
-				} /*else if (str=="pointer_index") {
-					valid=true;
-					return ie.mouse_button.pointer_index;
-				}*/
-
-				if (ie.type == InputEvent::MOUSE_MOTION) {
-
-					if (str == "relative_x") {
-						valid = true;
-						return ie.mouse_motion.relative_x;
-					} else if (str == "relative_y") {
-						valid = true;
-						return ie.mouse_motion.relative_y;
-					} else if (str == "relative_pos") {
-						valid = true;
-						return Point2(ie.mouse_motion.relative_x, ie.mouse_motion.relative_y);
-					} else if (str == "speed_x") {
-						valid = true;
-						return ie.mouse_motion.speed_x;
-					} else if (str == "speed_y") {
-						valid = true;
-						return ie.mouse_motion.speed_y;
-					} else if (str == "speed") {
-						valid = true;
-						return Point2(ie.mouse_motion.speed_x, ie.mouse_motion.speed_y);
-					}
-
-				} else if (ie.type == InputEvent::MOUSE_BUTTON) {
-
-					if (str == "button_index") {
-						valid = true;
-						return ie.mouse_button.button_index;
-					} else if (str == "pressed") {
-						valid = true;
-						return ie.mouse_button.pressed;
-					} else if (str == "doubleclick") {
-						valid = true;
-						return ie.mouse_button.doubleclick;
-					}
-				}
-			}
-
-			if (ie.type == InputEvent::JOYPAD_BUTTON) {
-
-				if (str == "button_index") {
-					valid = true;
-					return ie.joy_button.button_index;
-				}
-				if (str == "pressed") {
-					valid = true;
-					return ie.joy_button.pressed;
-				}
-				if (str == "pressure") {
-					valid = true;
-					return ie.joy_button.pressure;
-				}
-			}
-
-			if (ie.type == InputEvent::JOYPAD_MOTION) {
-
-				if (str == "axis") {
-					valid = true;
-					return ie.joy_motion.axis;
-				}
-				if (str == "value") {
-					valid = true;
-					return ie.joy_motion.axis_value;
-				}
-			}
-
-			if (ie.type == InputEvent::SCREEN_TOUCH) {
-
-				if (str == "index") {
-					valid = true;
-					return ie.screen_touch.index;
-				}
-				if (str == "x") {
-					valid = true;
-					return ie.screen_touch.x;
-				}
-				if (str == "y") {
-					valid = true;
-					return ie.screen_touch.y;
-				}
-				if (str == "pos") {
-					valid = true;
-					return Vector2(ie.screen_touch.x, ie.screen_touch.y);
-				}
-				if (str == "pressed") {
-					valid = true;
-					return ie.screen_touch.pressed;
-				}
-			}
-
-			if (ie.type == InputEvent::SCREEN_DRAG) {
-
-				if (str == "index") {
-					valid = true;
-					return ie.screen_drag.index;
-				}
-				if (str == "x") {
-					valid = true;
-					return ie.screen_drag.x;
-				}
-				if (str == "y") {
-					valid = true;
-					return ie.screen_drag.y;
-				}
-				if (str == "pos") {
-					valid = true;
-					return Vector2(ie.screen_drag.x, ie.screen_drag.y);
-				}
-				if (str == "relative_x") {
-					valid = true;
-					return ie.screen_drag.relative_x;
-				}
-				if (str == "relative_y") {
-					valid = true;
-					return ie.screen_drag.relative_y;
-				}
-				if (str == "relative_pos") {
-					valid = true;
-					return Vector2(ie.screen_drag.relative_x, ie.screen_drag.relative_y);
-				}
-				if (str == "speed_x") {
-					valid = true;
-					return ie.screen_drag.speed_x;
-				}
-				if (str == "speed_y") {
-					valid = true;
-					return ie.screen_drag.speed_y;
-				}
-				if (str == "speed") {
-					valid = true;
-					return Vector2(ie.screen_drag.speed_x, ie.screen_drag.speed_y);
-				}
-			}
-			if (ie.type == InputEvent::ACTION) {
-
-				if (str == "action") {
-					valid = true;
-					return ie.action.action;
-				} else if (str == "pressed") {
-					valid = true;
-					return ie.action.pressed;
-				}
-			}
-
-		} break;
 		case DICTIONARY: {
 
 			const Dictionary *dic = reinterpret_cast<const Dictionary *>(_data._mem);
@@ -2503,13 +1876,13 @@ Variant Variant::get(const Variant &p_index, bool *r_valid) const {
 				valid = true;
 				return *res;
 			}
-		} break; // 20
-			DEFAULT_OP_ARRAY_CMD(ARRAY, const Array, ;, return (*arr)[index])
+		} break;
+			DEFAULT_OP_ARRAY_CMD(ARRAY, const Array, ;, return (*arr)[index]) // 20
 			DEFAULT_OP_DVECTOR_GET(POOL_BYTE_ARRAY, uint8_t)
 			DEFAULT_OP_DVECTOR_GET(POOL_INT_ARRAY, int)
 			DEFAULT_OP_DVECTOR_GET(POOL_REAL_ARRAY, real_t)
 			DEFAULT_OP_DVECTOR_GET(POOL_STRING_ARRAY, String)
-			DEFAULT_OP_DVECTOR_GET(POOL_VECTOR2_ARRAY, Vector2)
+			DEFAULT_OP_DVECTOR_GET(POOL_VECTOR2_ARRAY, Vector2) // 25
 			DEFAULT_OP_DVECTOR_GET(POOL_VECTOR3_ARRAY, Vector3)
 			DEFAULT_OP_DVECTOR_GET(POOL_COLOR_ARRAY, Color)
 		default: return Variant();
@@ -2732,13 +2105,11 @@ void Variant::get_property_list(List<PropertyInfo> *p_list) const {
 
 			p_list->push_back(PropertyInfo(Variant::REAL, "x"));
 			p_list->push_back(PropertyInfo(Variant::REAL, "y"));
-			p_list->push_back(PropertyInfo(Variant::REAL, "width"));
-			p_list->push_back(PropertyInfo(Variant::REAL, "height"));
 
 		} break; // 5
 		case RECT2: {
 
-			p_list->push_back(PropertyInfo(Variant::VECTOR2, "pos"));
+			p_list->push_back(PropertyInfo(Variant::VECTOR2, "position"));
 			p_list->push_back(PropertyInfo(Variant::VECTOR2, "size"));
 			p_list->push_back(PropertyInfo(Variant::VECTOR2, "end"));
 
@@ -2754,7 +2125,7 @@ void Variant::get_property_list(List<PropertyInfo> *p_list) const {
 
 			p_list->push_back(PropertyInfo(Variant::VECTOR2, "x"));
 			p_list->push_back(PropertyInfo(Variant::VECTOR2, "y"));
-			p_list->push_back(PropertyInfo(Variant::VECTOR2, "o"));
+			p_list->push_back(PropertyInfo(Variant::VECTOR2, "origin"));
 
 		} break;
 		case PLANE: {
@@ -2773,12 +2144,12 @@ void Variant::get_property_list(List<PropertyInfo> *p_list) const {
 			p_list->push_back(PropertyInfo(Variant::REAL, "z"));
 			p_list->push_back(PropertyInfo(Variant::REAL, "w"));
 
-		} break;
+		} break; // 10
 		case RECT3: {
-			p_list->push_back(PropertyInfo(Variant::VECTOR3, "pos"));
+			p_list->push_back(PropertyInfo(Variant::VECTOR3, "position"));
 			p_list->push_back(PropertyInfo(Variant::VECTOR3, "size"));
 			p_list->push_back(PropertyInfo(Variant::VECTOR3, "end"));
-		} break; //sorry naming convention fail :( not like it's used often // 10
+		} break;
 		case BASIS: {
 
 			p_list->push_back(PropertyInfo(Variant::VECTOR3, "x"));
@@ -2806,8 +2177,6 @@ void Variant::get_property_list(List<PropertyInfo> *p_list) const {
 			p_list->push_back(PropertyInfo(Variant::INT, "a8"));
 
 		} break;
-		case IMAGE: {
-		} break;
 		case NODE_PATH: {
 		} break; // 15
 		case _RID: {
@@ -2830,94 +2199,6 @@ void Variant::get_property_list(List<PropertyInfo> *p_list) const {
 			}
 
 		} break;
-		case INPUT_EVENT: {
-
-			InputEvent ie = operator InputEvent();
-
-			p_list->push_back(PropertyInfo(Variant::INT, "type"));
-			p_list->push_back(PropertyInfo(Variant::INT, "device"));
-			p_list->push_back(PropertyInfo(Variant::INT, "ID"));
-
-			if (ie.type == InputEvent::KEY || ie.type == InputEvent::MOUSE_BUTTON || ie.type == InputEvent::MOUSE_MOTION) {
-
-				p_list->push_back(PropertyInfo(Variant::BOOL, "shift"));
-				p_list->push_back(PropertyInfo(Variant::BOOL, "alt"));
-				p_list->push_back(PropertyInfo(Variant::BOOL, "control"));
-				p_list->push_back(PropertyInfo(Variant::BOOL, "meta"));
-			}
-
-			if (ie.type == InputEvent::KEY) {
-
-				p_list->push_back(PropertyInfo(Variant::BOOL, "pressed"));
-				p_list->push_back(PropertyInfo(Variant::BOOL, "echo"));
-				p_list->push_back(PropertyInfo(Variant::INT, "scancode"));
-				p_list->push_back(PropertyInfo(Variant::INT, "unicode"));
-			}
-
-			if (ie.type == InputEvent::MOUSE_MOTION || ie.type == InputEvent::MOUSE_BUTTON) {
-
-				p_list->push_back(PropertyInfo(Variant::INT, "button_mask"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "x"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "y"));
-				p_list->push_back(PropertyInfo(Variant::VECTOR2, "pos"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "global_x"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "global_y"));
-				p_list->push_back(PropertyInfo(Variant::VECTOR2, "global_pos"));
-
-				if (ie.type == InputEvent::MOUSE_MOTION) {
-
-					p_list->push_back(PropertyInfo(Variant::REAL, "relative_x"));
-					p_list->push_back(PropertyInfo(Variant::REAL, "relative_y"));
-					p_list->push_back(PropertyInfo(Variant::VECTOR2, "relative_pos"));
-					p_list->push_back(PropertyInfo(Variant::REAL, "speed_x"));
-					p_list->push_back(PropertyInfo(Variant::REAL, "speed_y"));
-					p_list->push_back(PropertyInfo(Variant::VECTOR2, "speed"));
-
-				} else if (ie.type == InputEvent::MOUSE_BUTTON) {
-
-					p_list->push_back(PropertyInfo(Variant::INT, "button_index"));
-					p_list->push_back(PropertyInfo(Variant::BOOL, "pressed"));
-					p_list->push_back(PropertyInfo(Variant::BOOL, "doubleclick"));
-				}
-			}
-
-			if (ie.type == InputEvent::JOYPAD_BUTTON) {
-
-				p_list->push_back(PropertyInfo(Variant::INT, "button_index"));
-				p_list->push_back(PropertyInfo(Variant::BOOL, "pressed"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "pressure"));
-			}
-
-			if (ie.type == InputEvent::JOYPAD_MOTION) {
-
-				p_list->push_back(PropertyInfo(Variant::INT, "axis"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "value"));
-			}
-
-			if (ie.type == InputEvent::SCREEN_TOUCH) {
-
-				p_list->push_back(PropertyInfo(Variant::INT, "index"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "x"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "y"));
-				p_list->push_back(PropertyInfo(Variant::VECTOR2, "pos"));
-				p_list->push_back(PropertyInfo(Variant::BOOL, "pressed"));
-			}
-
-			if (ie.type == InputEvent::SCREEN_DRAG) {
-
-				p_list->push_back(PropertyInfo(Variant::INT, "index"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "x"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "y"));
-				p_list->push_back(PropertyInfo(Variant::VECTOR2, "pos"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "relative_x"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "relative_y"));
-				p_list->push_back(PropertyInfo(Variant::VECTOR2, "relative_pos"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "speed_x"));
-				p_list->push_back(PropertyInfo(Variant::REAL, "speed_y"));
-				p_list->push_back(PropertyInfo(Variant::VECTOR2, "speed"));
-			}
-
-		} break;
 		case DICTIONARY: {
 
 			const Dictionary *dic = reinterpret_cast<const Dictionary *>(_data._mem);
@@ -2928,12 +2209,13 @@ void Variant::get_property_list(List<PropertyInfo> *p_list) const {
 					p_list->push_back(PropertyInfo(Variant::STRING, E->get()));
 				}
 			}
-		} break; // 20
-		case ARRAY:
+		} break;
+		case ARRAY: // 20
 		case POOL_BYTE_ARRAY:
 		case POOL_INT_ARRAY:
 		case POOL_REAL_ARRAY:
 		case POOL_STRING_ARRAY:
+		case POOL_VECTOR2_ARRAY: // 25
 		case POOL_VECTOR3_ARRAY:
 		case POOL_COLOR_ARRAY: {
 
@@ -2952,30 +2234,30 @@ bool Variant::iter_init(Variant &r_iter, bool &valid) const {
 			return _data._int > 0;
 		} break;
 		case REAL: {
-			r_iter = 0.0;
+			r_iter = 0;
 			return _data._real > 0.0;
 		} break;
 		case VECTOR2: {
-			real_t from = reinterpret_cast<const Vector2 *>(_data._mem)->x;
-			real_t to = reinterpret_cast<const Vector2 *>(_data._mem)->y;
+			int64_t from = reinterpret_cast<const Vector2 *>(_data._mem)->x;
+			int64_t to = reinterpret_cast<const Vector2 *>(_data._mem)->y;
 
 			r_iter = from;
 
 			return from < to;
 		} break;
 		case VECTOR3: {
-			real_t from = reinterpret_cast<const Vector3 *>(_data._mem)->x;
-			real_t to = reinterpret_cast<const Vector3 *>(_data._mem)->y;
-			real_t step = reinterpret_cast<const Vector3 *>(_data._mem)->z;
+			int64_t from = reinterpret_cast<const Vector3 *>(_data._mem)->x;
+			int64_t to = reinterpret_cast<const Vector3 *>(_data._mem)->y;
+			int64_t step = reinterpret_cast<const Vector3 *>(_data._mem)->z;
 
 			r_iter = from;
 
 			if (from == to) {
 				return false;
 			} else if (from < to) {
-				return step > 0.0;
+				return step > 0;
 			} else {
-				return step < 0.0;
+				return step < 0;
 			}
 			//return true;
 		} break;
@@ -3103,7 +2385,6 @@ bool Variant::iter_next(Variant &r_iter, bool &valid) const {
 	valid = true;
 	switch (type) {
 		case INT: {
-
 			int64_t idx = r_iter;
 			idx++;
 			if (idx >= _data._int)
@@ -3112,33 +2393,36 @@ bool Variant::iter_next(Variant &r_iter, bool &valid) const {
 			return true;
 		} break;
 		case REAL: {
-
-			double idx = r_iter;
-			idx += 1.0;
+			int64_t idx = r_iter;
+			idx++;
 			if (idx >= _data._real)
 				return false;
 			r_iter = idx;
 			return true;
 		} break;
 		case VECTOR2: {
-			real_t idx = r_iter;
-			idx += 1.0;
-			if (idx >= reinterpret_cast<const Vector2 *>(_data._mem)->y)
+			int64_t to = reinterpret_cast<const Vector3 *>(_data._mem)->y;
+
+			int64_t idx = r_iter;
+			idx++;
+
+			if (idx >= to)
 				return false;
+
 			r_iter = idx;
 			return true;
 		} break;
 		case VECTOR3: {
-			real_t to = reinterpret_cast<const Vector3 *>(_data._mem)->y;
-			real_t step = reinterpret_cast<const Vector3 *>(_data._mem)->z;
+			int64_t to = reinterpret_cast<const Vector3 *>(_data._mem)->y;
+			int64_t step = reinterpret_cast<const Vector3 *>(_data._mem)->z;
 
-			real_t idx = r_iter;
+			int64_t idx = r_iter;
 			idx += step;
 
-			if (step < 0.0 && idx <= to)
+			if (step < 0 && idx <= to)
 				return false;
 
-			if (step > 0.0 && idx >= to)
+			if (step > 0 && idx >= to)
 				return false;
 
 			r_iter = idx;
@@ -3475,7 +2759,7 @@ void Variant::blend(const Variant &a, const Variant &b, float c, Variant &r_dst)
 		case RECT2: {
 			const Rect2 *ra = reinterpret_cast<const Rect2 *>(a._data._mem);
 			const Rect2 *rb = reinterpret_cast<const Rect2 *>(b._data._mem);
-			r_dst = Rect2(ra->pos + rb->pos * c, ra->size + rb->size * c);
+			r_dst = Rect2(ra->position + rb->position * c, ra->size + rb->size * c);
 		}
 			return;
 		case VECTOR3: {
@@ -3485,7 +2769,7 @@ void Variant::blend(const Variant &a, const Variant &b, float c, Variant &r_dst)
 		case RECT3: {
 			const Rect3 *ra = reinterpret_cast<const Rect3 *>(a._data._mem);
 			const Rect3 *rb = reinterpret_cast<const Rect3 *>(b._data._mem);
-			r_dst = Rect3(ra->pos + rb->pos * c, ra->size + rb->size * c);
+			r_dst = Rect3(ra->position + rb->position * c, ra->size + rb->size * c);
 		}
 			return;
 		case QUAT: {
@@ -3595,7 +2879,7 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 		}
 			return;
 		case RECT2: {
-			r_dst = Rect2(reinterpret_cast<const Rect2 *>(a._data._mem)->pos.linear_interpolate(reinterpret_cast<const Rect2 *>(b._data._mem)->pos, c), reinterpret_cast<const Rect2 *>(a._data._mem)->size.linear_interpolate(reinterpret_cast<const Rect2 *>(b._data._mem)->size, c));
+			r_dst = Rect2(reinterpret_cast<const Rect2 *>(a._data._mem)->position.linear_interpolate(reinterpret_cast<const Rect2 *>(b._data._mem)->position, c), reinterpret_cast<const Rect2 *>(a._data._mem)->size.linear_interpolate(reinterpret_cast<const Rect2 *>(b._data._mem)->size, c));
 		}
 			return;
 		case VECTOR3: {
@@ -3615,7 +2899,7 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 		}
 			return;
 		case RECT3: {
-			r_dst = Rect3(a._data._rect3->pos.linear_interpolate(b._data._rect3->pos, c), a._data._rect3->size.linear_interpolate(b._data._rect3->size, c));
+			r_dst = Rect3(a._data._rect3->position.linear_interpolate(b._data._rect3->position, c), a._data._rect3->size.linear_interpolate(b._data._rect3->size, c));
 		}
 			return;
 		case BASIS: {
@@ -3630,10 +2914,6 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 			r_dst = reinterpret_cast<const Color *>(a._data._mem)->linear_interpolate(*reinterpret_cast<const Color *>(b._data._mem), c);
 		}
 			return;
-		case IMAGE: {
-			r_dst = a;
-		}
-			return;
 		case NODE_PATH: {
 			r_dst = a;
 		}
@@ -3643,10 +2923,6 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 		}
 			return;
 		case OBJECT: {
-			r_dst = a;
-		}
-			return;
-		case INPUT_EVENT: {
 			r_dst = a;
 		}
 			return;

@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -195,14 +196,14 @@ public:
 	virtual Vector3 get_magnetometer() const;
 	virtual Vector3 get_gyroscope() const;
 
-	virtual Point2 get_mouse_pos() const;
+	virtual Point2 get_mouse_position() const;
 	virtual Point2 get_last_mouse_speed() const;
 	virtual int get_mouse_button_mask() const;
 
 	virtual void warp_mouse_pos(const Vector2 &p_to);
-	virtual Point2i warp_mouse_motion(const InputEventMouseMotion &p_motion, const Rect2 &p_rect);
+	virtual Point2i warp_mouse_motion(const Ref<InputEventMouseMotion> &p_motion, const Rect2 &p_rect);
 
-	virtual void parse_input_event(const InputEvent &p_event);
+	virtual void parse_input_event(const Ref<InputEvent> &p_event);
 
 	void set_gravity(const Vector3 &p_gravity);
 	void set_accelerometer(const Vector3 &p_accel);
@@ -213,8 +214,8 @@ public:
 	virtual void start_joy_vibration(int p_device, float p_weak_magnitude, float p_strong_magnitude, float p_duration = 0);
 	virtual void stop_joy_vibration(int p_device);
 
-	void set_main_loop(MainLoop *main_loop);
-	void set_mouse_pos(const Point2 &p_posf);
+	void set_main_loop(MainLoop *p_main_loop);
+	void set_mouse_position(const Point2 &p_posf);
 
 	void action_press(const StringName &p_action);
 	void action_release(const StringName &p_action);

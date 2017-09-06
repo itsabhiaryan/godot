@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -31,6 +32,7 @@
 
 #include "context_gl_win.h"
 #include "drivers/rtaudio/audio_driver_rtaudio.h"
+#include "drivers/wasapi/audio_driver_wasapi.h"
 #include "os/input.h"
 #include "os/os.h"
 #include "power_windows.h"
@@ -67,7 +69,7 @@ class OS_Windows : public OS {
 
 	struct KeyEvent {
 
-		InputModifierState mod_state;
+		bool alt, shift, control, meta;
 		UINT uMsg;
 		WPARAM wParam;
 		LPARAM lParam;
@@ -122,6 +124,9 @@ class OS_Windows : public OS {
 
 	PowerWindows *power_manager;
 
+#ifdef WASAPI_ENABLED
+	AudioDriverWASAPI driver_wasapi;
+#endif
 #ifdef RTAUDIO_ENABLED
 	AudioDriverRtAudio driver_rtaudio;
 #endif
@@ -131,6 +136,8 @@ class OS_Windows : public OS {
 
 	void _drag_event(int p_x, int p_y, int idx);
 	void _touch_event(bool p_pressed, int p_x, int p_y, int idx);
+
+	void _update_window_style(bool repaint = true);
 
 	// functions used by main to initialize/deintialize the OS
 protected:
@@ -161,21 +168,11 @@ protected:
 	};
 	Map<ProcessID, ProcessInfo> *process_map;
 
-	struct MonitorInfo {
-		HMONITOR hMonitor;
-		HDC hdcMonitor;
-		Rect2 rect;
-		int dpi;
-	};
-
 	bool pre_fs_valid;
 	RECT pre_fs_rect;
-	Vector<MonitorInfo> monitor_info;
 	bool maximized;
 	bool minimized;
 	bool borderless;
-
-	static BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
 
 public:
 	LRESULT WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -190,7 +187,7 @@ public:
 	MouseMode get_mouse_mode() const;
 
 	virtual void warp_mouse_pos(const Point2 &p_to);
-	virtual Point2 get_mouse_pos() const;
+	virtual Point2 get_mouse_position() const;
 	virtual int get_mouse_button_state() const;
 	virtual void set_window_title(const String &p_title);
 
@@ -201,9 +198,9 @@ public:
 	virtual int get_screen_count() const;
 	virtual int get_current_screen() const;
 	virtual void set_current_screen(int p_screen);
-	virtual Point2 get_screen_position(int p_screen = 0) const;
-	virtual Size2 get_screen_size(int p_screen = 0) const;
-	virtual int get_screen_dpi(int p_screen = 0) const;
+	virtual Point2 get_screen_position(int p_screen = -1) const;
+	virtual Size2 get_screen_size(int p_screen = -1) const;
+	virtual int get_screen_dpi(int p_screen = -1) const;
 
 	virtual Point2 get_window_position() const;
 	virtual void set_window_position(const Point2 &p_position);
@@ -224,7 +221,7 @@ public:
 
 	virtual Error open_dynamic_library(const String p_path, void *&p_library_handle);
 	virtual Error close_dynamic_library(void *p_library_handle);
-	virtual Error get_dynamic_library_symbol_handle(void *p_library_handle, const String p_name, void *&p_symbol_handle);
+	virtual Error get_dynamic_library_symbol_handle(void *p_library_handle, const String p_name, void *&p_symbol_handle, bool p_optional = false);
 
 	virtual MainLoop *get_main_loop() const;
 
@@ -244,7 +241,7 @@ public:
 
 	virtual Error execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id = NULL, String *r_pipe = NULL, int *r_exitcode = NULL);
 	virtual Error kill(const ProcessID &p_pid);
-	virtual int get_process_ID() const;
+	virtual int get_process_id() const;
 
 	virtual bool has_environment(const String &p_var) const;
 	virtual String get_environment(const String &p_var) const;
@@ -253,7 +250,7 @@ public:
 	virtual String get_clipboard() const;
 
 	void set_cursor_shape(CursorShape p_shape);
-	void set_icon(const Image &p_icon);
+	void set_icon(const Ref<Image> &p_icon);
 
 	virtual String get_executable_path() const;
 
@@ -285,7 +282,7 @@ public:
 	virtual int get_power_seconds_left();
 	virtual int get_power_percent_left();
 
-	virtual bool check_feature_support(const String &p_feature);
+	virtual bool _check_internal_feature_support(const String &p_feature);
 
 	OS_Windows(HINSTANCE _hInstance);
 	~OS_Windows();

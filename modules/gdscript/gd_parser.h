@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -145,10 +146,13 @@ public:
 		Vector<StringName> variables;
 		Vector<int> variable_lines;
 
+		Node *if_condition; //tiny hack to improve code completion on if () blocks
+
 		//the following is useful for code completion
 		List<BlockNode *> sub_blocks;
 		int end_line;
 		BlockNode() {
+			if_condition = NULL;
 			type = TYPE_BLOCK;
 			end_line = -1;
 			parent_block = NULL;
@@ -215,7 +219,7 @@ public:
 			OP_CALL,
 			OP_PARENT_CALL,
 			OP_YIELD,
-			OP_EXTENDS,
+			OP_IS,
 			//indexing operator
 			OP_INDEX,
 			OP_INDEX_NAMED,
@@ -436,9 +440,11 @@ public:
 		COMPLETION_PARENT_FUNCTION,
 		COMPLETION_METHOD,
 		COMPLETION_CALL_ARGUMENTS,
+		COMPLETION_RESOURCE_PATH,
 		COMPLETION_INDEX,
 		COMPLETION_VIRTUAL_FUNC,
 		COMPLETION_YIELD,
+		COMPLETION_ASSIGN,
 	};
 
 private:

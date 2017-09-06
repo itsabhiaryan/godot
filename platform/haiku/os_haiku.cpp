@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -26,16 +27,15 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-#include <Screen.h>
+#include "os_haiku.h"
 
-#include "drivers/gles2/rasterizer_gles2.h"
+#include "drivers/gles3/rasterizer_gles3.h"
+#include "main/main.h"
 #include "servers/physics/physics_server_sw.h"
 #include "servers/visual/visual_server_raster.h"
 #include "servers/visual/visual_server_wrap_mt.h"
-//#include "servers/physics_2d/physics_2d_server_wrap_mt.h"
-#include "main/main.h"
 
-#include "os_haiku.h"
+#include <Screen.h>
 
 OS_Haiku::OS_Haiku() {
 #ifdef MEDIA_KIT_ENABLED
@@ -206,7 +206,7 @@ void OS_Haiku::swap_buffers() {
 	context_gl->swap_buffers();
 }
 
-Point2 OS_Haiku::get_mouse_pos() const {
+Point2 OS_Haiku::get_mouse_position() const {
 	return window->GetLastMousePosition();
 }
 
@@ -329,4 +329,9 @@ void OS_Haiku::get_fullscreen_mode_list(List<VideoMode> *p_list, int p_screen) c
 
 String OS_Haiku::get_executable_path() const {
 	return OS::get_executable_path();
+}
+
+bool OS_Haiku::_check_internal_feature_support(const String &p_feature) {
+
+	return p_feature == "pc" || p_feature == "s3tc";
 }

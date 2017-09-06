@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -31,8 +32,8 @@
 #include "editor_file_system.h"
 #include "editor_node.h"
 #include "editor_settings.h"
-#include "global_config.h"
 #include "os/keyboard.h"
+#include "project_settings.h"
 #include "scene/gui/margin_container.h"
 
 void EditorSettingsDialog::ok_pressed() {
@@ -147,7 +148,7 @@ void EditorSettingsDialog::_update_shortcuts() {
 		if (!sc->has_meta("original"))
 			continue;
 
-		InputEvent original = sc->get_meta("original");
+		Ref<InputEvent> original = sc->get_meta("original");
 
 		String section_name = E->get().get_slice("/", 0);
 
@@ -164,12 +165,12 @@ void EditorSettingsDialog::_update_shortcuts() {
 			section->set_custom_bg_color(1, get_color("prop_subsection", "Editor"));
 		}
 
-		if (shortcut_filter.is_subsequence_ofi(sc->get_name())) {
+		if (shortcut_filter.is_subsequence_ofi(sc->get_name()) || shortcut_filter.is_subsequence_ofi(sc->get_as_text())) {
 			TreeItem *item = shortcuts->create_item(section);
 
 			item->set_text(0, sc->get_name());
 			item->set_text(1, sc->get_as_text());
-			if (!sc->is_shortcut(original) && !(sc->get_shortcut().type == InputEvent::NONE && original.type == InputEvent::NONE)) {
+			if (!sc->is_shortcut(original) && !(sc->get_shortcut().is_null() && original.is_null())) {
 				item->add_button(1, get_icon("Reload", "EditorIcons"), 2);
 			}
 			item->add_button(1, get_icon("Edit", "EditorIcons"), 0);
@@ -190,7 +191,7 @@ void EditorSettingsDialog::_update_shortcuts() {
 
 void EditorSettingsDialog::_shortcut_button_pressed(Object *p_item, int p_column, int p_idx) {
 
-	TreeItem *ti = p_item->cast_to<TreeItem>();
+	TreeItem *ti = Object::cast_to<TreeItem>(p_item);
 	ERR_FAIL_COND(!ti);
 
 	String item = ti->get_metadata(0);
@@ -198,7 +199,7 @@ void EditorSettingsDialog::_shortcut_button_pressed(Object *p_item, int p_column
 
 	if (p_idx == 0) {
 		press_a_key_label->set_text(TTR("Press a Key.."));
-		last_wait_for_key = InputEvent();
+		last_wait_for_key = Ref<InputEventKey>();
 		press_a_key->popup_centered(Size2(250, 80) * EDSCALE);
 		press_a_key->grab_focus();
 		press_a_key->get_ok()->set_focus_mode(FOCUS_NONE);
@@ -211,7 +212,7 @@ void EditorSettingsDialog::_shortcut_button_pressed(Object *p_item, int p_column
 
 		UndoRedo *ur = EditorNode::get_singleton()->get_undo_redo();
 		ur->create_action("Erase Shortcut");
-		ur->add_do_method(sc.ptr(), "set_shortcut", InputEvent());
+		ur->add_do_method(sc.ptr(), "set_shortcut", Ref<InputEvent>());
 		ur->add_undo_method(sc.ptr(), "set_shortcut", sc->get_shortcut());
 		ur->add_do_method(this, "_update_shortcuts");
 		ur->add_undo_method(this, "_update_shortcuts");
@@ -222,7 +223,7 @@ void EditorSettingsDialog::_shortcut_button_pressed(Object *p_item, int p_column
 		if (!sc.is_valid())
 			return; //pointless, there is nothing
 
-		InputEvent original = sc->get_meta("original");
+		Ref<InputEvent> original = sc->get_meta("original");
 
 		UndoRedo *ur = EditorNode::get_singleton()->get_undo_redo();
 		ur->create_action("Restore Shortcut");
@@ -236,19 +237,21 @@ void EditorSettingsDialog::_shortcut_button_pressed(Object *p_item, int p_column
 	}
 }
 
-void EditorSettingsDialog::_wait_for_key(const InputEvent &p_event) {
+void EditorSettingsDialog::_wait_for_key(const Ref<InputEvent> &p_event) {
 
-	if (p_event.type == InputEvent::KEY && p_event.key.pressed && p_event.key.scancode != 0) {
+	Ref<InputEventKey> k = p_event;
 
-		last_wait_for_key = p_event;
-		String str = keycode_get_string(p_event.key.scancode).capitalize();
-		if (p_event.key.mod.meta)
+	if (k.is_valid() && k->is_pressed() && k->get_scancode() != 0) {
+
+		last_wait_for_key = k;
+		String str = keycode_get_string(k->get_scancode()).capitalize();
+		if (k->get_metakey())
 			str = TTR("Meta+") + str;
-		if (p_event.key.mod.shift)
+		if (k->get_shift())
 			str = TTR("Shift+") + str;
-		if (p_event.key.mod.alt)
+		if (k->get_alt())
 			str = TTR("Alt+") + str;
-		if (p_event.key.mod.control)
+		if (k->get_control())
 			str = TTR("Control+") + str;
 
 		press_a_key_label->set_text(str);
@@ -258,13 +261,16 @@ void EditorSettingsDialog::_wait_for_key(const InputEvent &p_event) {
 
 void EditorSettingsDialog::_press_a_key_confirm() {
 
-	if (last_wait_for_key.type != InputEvent::KEY)
+	if (last_wait_for_key.is_null())
 		return;
 
-	InputEvent ie;
-	ie.type = InputEvent::KEY;
-	ie.key.scancode = last_wait_for_key.key.scancode;
-	ie.key.mod = last_wait_for_key.key.mod;
+	Ref<InputEventKey> ie;
+	ie.instance();
+	ie->set_scancode(last_wait_for_key->get_scancode());
+	ie->set_shift(last_wait_for_key->get_shift());
+	ie->set_control(last_wait_for_key->get_control());
+	ie->set_alt(last_wait_for_key->get_alt());
+	ie->set_metakey(last_wait_for_key->get_metakey());
 
 	Ref<ShortCut> sc = EditorSettings::get_singleton()->get_shortcut(shortcut_configured);
 
@@ -299,6 +305,7 @@ EditorSettingsDialog::EditorSettingsDialog() {
 	set_resizable(true);
 
 	tabs = memnew(TabContainer);
+	tabs->set_tab_align(TabContainer::ALIGN_LEFT);
 	add_child(tabs);
 	//set_child_rect(tabs);
 
@@ -325,7 +332,7 @@ EditorSettingsDialog::EditorSettingsDialog() {
 	property_editor = memnew(SectionedPropertyEditor);
 	//property_editor->hide_top_label();
 	property_editor->get_property_editor()->set_use_filter(true);
-	property_editor->get_property_editor()->register_text_enter(search_box);
+	property_editor->register_search_box(search_box);
 	property_editor->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	vbc->add_child(property_editor);
 	property_editor->get_property_editor()->connect("property_edited", this, "_settings_property_edited");
@@ -375,10 +382,6 @@ EditorSettingsDialog::EditorSettingsDialog() {
 	press_a_key->add_child(l);
 	press_a_key->connect("gui_input", this, "_wait_for_key");
 	press_a_key->connect("confirmed", this, "_press_a_key_confirm");
-	//Button *load = memnew( Button );
-
-	//load->set_text("Load..");
-	//hbc->add_child(load);
 
 	//get_ok()->set_text("Apply");
 	set_hide_on_ok(true);

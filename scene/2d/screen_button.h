@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -57,11 +58,12 @@ private:
 	StringName action;
 	bool passby_press;
 	int finger_pressed;
-	int action_id;
 
 	VisibilityMode visibility;
 
-	void _input(const InputEvent &p_Event);
+	void _input(const Ref<InputEvent> &p_event);
+
+	bool _is_point_inside(const Point2 &p_point);
 
 	void _press(int p_finger_pressed);
 	void _release(bool p_exiting_tree = false);

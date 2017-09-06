@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -45,10 +46,8 @@ Error AudioDriverIphone::init() {
 	strdesc.mBytesPerPacket =
 			strdesc.mBytesPerFrame * strdesc.mFramesPerPacket;
 
-	OSStatus result = noErr;
 	AURenderCallbackStruct callback;
 	AudioComponentDescription desc;
-	AudioComponent comp = NULL;
 	const AudioUnitElement output_bus = 0;
 	const AudioUnitElement bus = output_bus;
 	const AudioUnitScope scope = kAudioUnitScope_Input;
@@ -56,10 +55,10 @@ Error AudioDriverIphone::init() {
 	zeromem(&desc, sizeof(desc));
 	desc.componentType = kAudioUnitType_Output;
 	desc.componentSubType = kAudioUnitSubType_RemoteIO; /* !!! FIXME: ? */
-	comp = AudioComponentFindNext(NULL, &desc);
+	AudioComponent comp = AudioComponentFindNext(NULL, &desc);
 	desc.componentManufacturer = kAudioUnitManufacturer_Apple;
 
-	result = AudioComponentInstanceNew(comp, &audio_unit);
+	OSStatus result = AudioComponentInstanceNew(comp, &audio_unit);
 	ERR_FAIL_COND_V(result != noErr, FAILED);
 	ERR_FAIL_COND_V(comp == NULL, FAILED);
 
@@ -147,6 +146,11 @@ OSStatus AudioDriverIphone::output_callback(void *inRefCon,
 
 void AudioDriverIphone::start() {
 	active = true;
+	// Resume audio
+	//	iOS audio-thread stoped if it is interrupted cause by an incoming phone call
+	//	Use AudioOutputUnitStart to re-create audio-thread
+	OSStatus result = AudioOutputUnitStart(audio_unit);
+	ERR_FAIL_COND(result != noErr);
 };
 
 int AudioDriverIphone::get_mix_rate() const {

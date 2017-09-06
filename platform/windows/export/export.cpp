@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,14 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "editor/editor_export.h"
-#include "platform/windows/logo.h"
+#include "platform/windows/logo.gen.h"
 
 void register_windows_exporter() {
 
 	Ref<EditorExportPlatformPC> platform;
 	platform.instance();
 
-	Image img(_windows_logo);
+	Ref<Image> img = memnew(Image(_windows_logo));
 	Ref<ImageTexture> logo;
 	logo.instance();
 	logo->create_from_image(img);
@@ -45,6 +46,7 @@ void register_windows_exporter() {
 	platform->set_debug_32("windows_32_debug.exe");
 	platform->set_release_64("windows_64_release.exe");
 	platform->set_debug_64("windows_64_debug.exe");
+	platform->set_os_name("Windows");
 
 	EditorExport::get_singleton()->add_export_platform(platform);
 }

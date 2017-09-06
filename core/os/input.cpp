@@ -3,9 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,9 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 #include "input.h"
-#include "global_config.h"
 #include "input_map.h"
 #include "os/os.h"
+#include "project_settings.h"
 Input *Input::singleton = NULL;
 
 Input *Input::get_singleton() {
@@ -74,7 +75,7 @@ void Input::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_accelerometer"), &Input::get_accelerometer);
 	ClassDB::bind_method(D_METHOD("get_magnetometer"), &Input::get_magnetometer);
 	ClassDB::bind_method(D_METHOD("get_gyroscope"), &Input::get_gyroscope);
-	//ClassDB::bind_method(D_METHOD("get_mouse_pos"),&Input::get_mouse_pos); - this is not the function you want
+	//ClassDB::bind_method(D_METHOD("get_mouse_position"),&Input::get_mouse_position); - this is not the function you want
 	ClassDB::bind_method(D_METHOD("get_last_mouse_speed"), &Input::get_last_mouse_speed);
 	ClassDB::bind_method(D_METHOD("get_mouse_button_mask"), &Input::get_mouse_button_mask);
 	ClassDB::bind_method(D_METHOD("set_mouse_mode", "mode"), &Input::set_mouse_mode);
@@ -82,13 +83,13 @@ void Input::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("warp_mouse_pos", "to"), &Input::warp_mouse_pos);
 	ClassDB::bind_method(D_METHOD("action_press", "action"), &Input::action_press);
 	ClassDB::bind_method(D_METHOD("action_release", "action"), &Input::action_release);
-	ClassDB::bind_method(D_METHOD("set_custom_mouse_cursor", "image:Texture", "hotspot"), &Input::set_custom_mouse_cursor, DEFVAL(Vector2()));
+	ClassDB::bind_method(D_METHOD("set_custom_mouse_cursor", "image", "hotspot"), &Input::set_custom_mouse_cursor, DEFVAL(Vector2()));
 	ClassDB::bind_method(D_METHOD("parse_input_event", "event"), &Input::parse_input_event);
 
-	BIND_CONSTANT(MOUSE_MODE_VISIBLE);
-	BIND_CONSTANT(MOUSE_MODE_HIDDEN);
-	BIND_CONSTANT(MOUSE_MODE_CAPTURED);
-	BIND_CONSTANT(MOUSE_MODE_CONFINED);
+	BIND_ENUM_CONSTANT(MOUSE_MODE_VISIBLE);
+	BIND_ENUM_CONSTANT(MOUSE_MODE_HIDDEN);
+	BIND_ENUM_CONSTANT(MOUSE_MODE_CAPTURED);
+	BIND_ENUM_CONSTANT(MOUSE_MODE_CONFINED);
 
 	ADD_SIGNAL(MethodInfo("joy_connection_changed", PropertyInfo(Variant::INT, "index"), PropertyInfo(Variant::BOOL, "connected")));
 }
@@ -100,7 +101,7 @@ void Input::get_argument_options(const StringName &p_function, int p_idx, List<S
 	if (p_idx == 0 && (pf == "is_action_pressed" || pf == "action_press" || pf == "action_release" || pf == "is_action_just_pressed" || pf == "is_action_just_released")) {
 
 		List<PropertyInfo> pinfo;
-		GlobalConfig::get_singleton()->get_property_list(&pinfo);
+		ProjectSettings::get_singleton()->get_property_list(&pinfo);
 
 		for (List<PropertyInfo>::Element *E = pinfo.front(); E; E = E->next()) {
 			const PropertyInfo &pi = E->get();
