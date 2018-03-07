@@ -174,7 +174,7 @@ void light_compute(vec3 N, vec3 L,vec3 V, vec3 light_color, float roughness, ino
 
 		vec3 H = normalize(V + L);
 		float dotNH = max(dot(N,H), 0.0 );
-		float intensity = pow( dotNH, (1.0-roughness) * 256.0);
+		float intensity = (roughness >= 1.0 ? 1.0 : pow( dotNH, (1.0-roughness) * 256.0));
 		specular += light_color * intensity;
 
 	}
@@ -296,6 +296,48 @@ void main() {
 
 #endif
 
+
+#if defined(ENABLE_TANGENT_INTERP) || defined(ENABLE_NORMALMAP) || defined(LIGHT_USE_ANISOTROPY)
+
+	vec3 binormal = normalize( cross(normal,tangent) * binormalf );
+#endif
+
+#if defined(ENABLE_UV_INTERP)
+	uv_interp = uv_attrib;
+#endif
+
+#if defined(ENABLE_UV2_INTERP) || defined(USE_LIGHTMAP)
+	uv2_interp = uv2_attrib;
+#endif
+
+#if defined(USE_INSTANCING) && defined(ENABLE_INSTANCE_CUSTOM)
+	vec4 instance_custom = instance_custom_data;
+#else
+	vec4 instance_custom = vec4(0.0);
+#endif
+
+	highp mat4 local_projection = projection_matrix;
+
+//using world coordinates
+#if !defined(SKIP_TRANSFORM_USED) && defined(VERTEX_WORLD_COORDS_USED)
+
+	vertex = world_matrix * vertex;
+	normal = normalize((world_matrix * vec4(normal,0.0)).xyz);
+
+#if defined(ENABLE_TANGENT_INTERP) || defined(ENABLE_NORMALMAP) || defined(LIGHT_USE_ANISOTROPY)
+
+	tangent = normalize((world_matrix * vec4(tangent,0.0)).xyz);
+	binormal = normalize((world_matrix * vec4(binormal,0.0)).xyz);
+#endif
+#endif
+
+	float roughness=0.0;
+
+//defines that make writing custom shaders easier
+#define projection_matrix local_projection
+#define world_transform world_matrix
+
+
 #ifdef USE_SKELETON
 	{
 		//skeleton transform
@@ -333,57 +375,13 @@ void main() {
 					texelFetch(skeleton_texture,tex_ofs+ivec2(0,2),0)
 				) * bone_weights.w;
 
+		mat4 bone_matrix = transpose(mat4(m[0],m[1],m[2],vec4(0.0,0.0,0.0,1.0)));
 
-		vertex.xyz = vertex * m;
-
-		normal = vec4(normal,0.0) * m;
-#if defined(ENABLE_TANGENT_INTERP) || defined(ENABLE_NORMALMAP) || defined(LIGHT_USE_ANISOTROPY)
-		tangent.xyz = vec4(tangent.xyz,0.0) * m;
-#endif
+		world_matrix = bone_matrix * world_matrix;
 	}
 #endif
 
-
-#if defined(ENABLE_TANGENT_INTERP) || defined(ENABLE_NORMALMAP) || defined(LIGHT_USE_ANISOTROPY)
-
-	vec3 binormal = normalize( cross(normal,tangent) * binormalf );
-#endif
-
-#if defined(ENABLE_UV_INTERP)
-	uv_interp = uv_attrib;
-#endif
-
-#if defined(ENABLE_UV2_INTERP) || defined(USE_LIGHTMAP)
-	uv2_interp = uv2_attrib;
-#endif
-
-#if defined(USE_INSTANCING) && defined(ENABLE_INSTANCE_CUSTOM)
-	vec4 instance_custom = instance_custom_data;
-#else
-	vec4 instance_custom = vec4(0.0);
-#endif
-
-	highp mat4 modelview = camera_inverse_matrix * world_matrix;
-	highp mat4 local_projection = projection_matrix;
-
-//using world coordinates
-#if !defined(SKIP_TRANSFORM_USED) && defined(VERTEX_WORLD_COORDS_USED)
-
-	vertex = world_matrix * vertex;
-	normal = normalize((world_matrix * vec4(normal,0.0)).xyz);
-
-#if defined(ENABLE_TANGENT_INTERP) || defined(ENABLE_NORMALMAP) || defined(LIGHT_USE_ANISOTROPY)
-
-	tangent = normalize((world_matrix * vec4(tangent,0.0)).xyz);
-	binormal = normalize((world_matrix * vec4(binormal,0.0)).xyz);
-#endif
-#endif
-
-	float roughness=0.0;
-
-//defines that make writing custom shaders easier
-#define projection_matrix local_projection
-#define world_transform world_matrix
+	mat4 modelview = camera_inverse_matrix * world_matrix;
 {
 
 VERTEX_SHADER_CODE
@@ -447,8 +445,7 @@ VERTEX_SHADER_CODE
 	vtx.z=(distance/shadow_dual_paraboloid_render_zfar);
 	vtx.z=vtx.z * 2.0 - 1.0;
 
-	vertex.xyz=vtx;
-	vertex.w=1.0;
+	vertex_interp = vtx;
 
 
 #else
@@ -907,7 +904,7 @@ float G_GGX_anisotropic_2cos(float cos_theta_m, float alpha_x, float alpha_y, fl
 	float sin2 = (1.0-cos2);
 	float s_x = alpha_x * cos_phi;
 	float s_y = alpha_y * sin_phi;
-	return 1.0  / (cos_theta_m + sqrt(cos2 + (s_x*s_x + s_y*s_y)*sin2 ));
+	return 1.0  / max(cos_theta_m + sqrt(cos2 + (s_x*s_x + s_y*s_y)*sin2 ), 0.001);
 }
 
 float D_GGX_anisotropic(float cos_theta_m, float alpha_x, float alpha_y, float cos_phi, float sin_phi) {
@@ -916,7 +913,7 @@ float D_GGX_anisotropic(float cos_theta_m, float alpha_x, float alpha_y, float c
 	float r_x = cos_phi/alpha_x;
 	float r_y = sin_phi/alpha_y;
 	float d = cos2 + sin2*(r_x * r_x + r_y * r_y);
-	return 1.0 / (M_PI * alpha_x * alpha_y * d * d );
+	return 1.0 / max(M_PI * alpha_x * alpha_y * d * d, 0.001);
 }
 
 
@@ -1310,7 +1307,7 @@ void reflection_process(int idx, vec3 vertex, vec3 normal,vec3 binormal, vec3 ta
 	//make blend more rounded
 	blend=mix(length(inner_pos),blend,blend);
 	blend*=blend;
-	blend=1.001-blend;
+	blend=max(0.0, 1.0-blend);
 
 	if (reflections[idx].params.x>0.0){// compute reflection
 
@@ -1478,9 +1475,9 @@ void gi_probe_compute(mediump sampler3D probe, mat4 probe_xform, vec3 bounds,vec
 		return;
 	}
 
-	//vec3 blendv = probe_pos/bounds * 2.0 - 1.0;
-	//float blend = 1.001-max(blendv.x,max(blendv.y,blendv.z));
-	float blend=1.0;
+	vec3 blendv = abs(probe_pos/bounds * 2.0 - 1.0);
+	float blend = clamp(1.0-max(blendv.x,max(blendv.y,blendv.z)), 0.0, 1.0);
+	//float blend=1.0;
 
 	float max_distance = length(bounds);
 
@@ -1617,7 +1614,7 @@ void main() {
 
 	float alpha = 1.0;
 
-#ifdef METERIAL_DOUBLESIDED
+#if defined(DO_SIDE_CHECK)
 	float side=float(gl_FrontFacing)*2.0-1.0;
 #else
 	float side=1.0;
@@ -1651,7 +1648,7 @@ void main() {
 
 #if defined(ENABLE_NORMALMAP)
 
-	vec3 normalmap = vec3(0.0);
+	vec3 normalmap = vec3(0.5);
 #endif
 
 	float normaldepth=1.0;
@@ -2006,7 +2003,7 @@ FRAGMENT_SHADER_CODE
 	}
 #ifndef USE_LIGHTMAP
 	if (ambient_accum.a>0.0) {
-		ambient_light+=ambient_accum.rgb/ambient_accum.a;
+		ambient_light=ambient_accum.rgb/ambient_accum.a;
 	}
 #endif
 

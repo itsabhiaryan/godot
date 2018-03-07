@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "doc_data.h"
 
 #include "engine.h"
@@ -610,6 +611,14 @@ void DocData::generate(bool p_basic_types) {
 
 					ArgumentDoc ad;
 					argument_doc_from_arginfo(ad, mi.arguments[i]);
+
+					int darg_idx = i - (mi.arguments.size() - mi.default_arguments.size());
+
+					if (darg_idx >= 0) {
+						Variant default_arg = E->get().default_arguments[darg_idx];
+						ad.default_value = default_arg.get_construct_string();
+					}
+
 					md.arguments.push_back(ad);
 				}
 
@@ -965,7 +974,7 @@ Error DocData::save_classes(const String &p_default_path, const Map<String, Stri
 		if (c.category == "")
 			category = "Core";
 		header += " category=\"" + category + "\"";
-		header += String(" version=\"") + itos(VERSION_MAJOR) + "." + itos(VERSION_MINOR) + "-" + VERSION_STATUS + "\"";
+		header += String(" version=\"") + VERSION_NUMBER + "\"";
 		header += ">";
 		_write_string(f, 0, header);
 		_write_string(f, 1, "<brief_description>");

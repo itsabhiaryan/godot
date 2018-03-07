@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "physics_body.h"
 
 #include "engine.h"
@@ -257,6 +258,7 @@ void RigidBody::_body_enter_tree(ObjectID p_id) {
 	Node *node = Object::cast_to<Node>(obj);
 	ERR_FAIL_COND(!node);
 
+	ERR_FAIL_COND(!contact_monitor);
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(p_id);
 	ERR_FAIL_COND(!E);
 	ERR_FAIL_COND(E->get().in_tree);
@@ -280,6 +282,7 @@ void RigidBody::_body_exit_tree(ObjectID p_id) {
 	Object *obj = ObjectDB::get_instance(p_id);
 	Node *node = Object::cast_to<Node>(obj);
 	ERR_FAIL_COND(!node);
+	ERR_FAIL_COND(!contact_monitor);
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(p_id);
 	ERR_FAIL_COND(!E);
 	ERR_FAIL_COND(!E->get().in_tree);
@@ -305,6 +308,7 @@ void RigidBody::_body_inout(int p_status, ObjectID p_instance, int p_body_shape,
 	Object *obj = ObjectDB::get_instance(objid);
 	Node *node = Object::cast_to<Node>(obj);
 
+	ERR_FAIL_COND(!contact_monitor);
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(objid);
 
 	ERR_FAIL_COND(!body_in && !E);
@@ -317,7 +321,7 @@ void RigidBody::_body_inout(int p_status, ObjectID p_instance, int p_body_shape,
 			E->get().in_tree = node && node->is_inside_tree();
 			if (node) {
 				node->connect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree, make_binds(objid));
-				node->connect(SceneStringNames::get_singleton()->tree_exited, this, SceneStringNames::get_singleton()->_body_exit_tree, make_binds(objid));
+				node->connect(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_body_exit_tree, make_binds(objid));
 				if (E->get().in_tree) {
 					emit_signal(SceneStringNames::get_singleton()->body_entered, node);
 				}
@@ -344,7 +348,7 @@ void RigidBody::_body_inout(int p_status, ObjectID p_instance, int p_body_shape,
 
 			if (node) {
 				node->disconnect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree);
-				node->disconnect(SceneStringNames::get_singleton()->tree_exited, this, SceneStringNames::get_singleton()->_body_exit_tree);
+				node->disconnect(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_body_exit_tree);
 				if (in_tree)
 					emit_signal(SceneStringNames::get_singleton()->body_exited, obj);
 			}
@@ -366,9 +370,7 @@ struct _RigidBodyInOut {
 
 void RigidBody::_direct_state_changed(Object *p_state) {
 
-//eh.. fuck
 #ifdef DEBUG_ENABLED
-
 	state = Object::cast_to<PhysicsDirectBodyState>(p_state);
 #else
 	state = (PhysicsDirectBodyState *)p_state; //trust it
@@ -692,6 +694,10 @@ void RigidBody::apply_impulse(const Vector3 &p_pos, const Vector3 &p_impulse) {
 	PhysicsServer::get_singleton()->body_apply_impulse(get_rid(), p_pos, p_impulse);
 }
 
+void RigidBody::apply_torque_impulse(const Vector3 &p_impulse) {
+	PhysicsServer::get_singleton()->body_apply_torque_impulse(get_rid(), p_impulse);
+}
+
 void RigidBody::set_use_continuous_collision_detection(bool p_enable) {
 
 	ccd = p_enable;
@@ -718,6 +724,14 @@ void RigidBody::set_contact_monitor(bool p_enabled) {
 		for (Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.front(); E; E = E->next()) {
 
 			//clean up mess
+			Object *obj = ObjectDB::get_instance(E->key());
+			Node *node = Object::cast_to<Node>(obj);
+
+			if (node) {
+
+				node->disconnect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree);
+				node->disconnect(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_body_exit_tree);
+			}
 		}
 
 		memdelete(contact_monitor);
@@ -771,7 +785,7 @@ String RigidBody::get_configuration_warning() const {
 		if (warning != String()) {
 			warning += "\n";
 		}
-		warning += TTR("Size changes to RigidBody (in character or rigid modes) will be overriden by the physics engine when running.\nChange the size in children collision shapes instead.");
+		warning += TTR("Size changes to RigidBody (in character or rigid modes) will be overridden by the physics engine when running.\nChange the size in children collision shapes instead.");
 	}
 
 	return warning;
@@ -823,6 +837,7 @@ void RigidBody::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_axis_velocity", "axis_velocity"), &RigidBody::set_axis_velocity);
 	ClassDB::bind_method(D_METHOD("apply_impulse", "position", "impulse"), &RigidBody::apply_impulse);
+	ClassDB::bind_method(D_METHOD("apply_torque_impulse", "impulse"), &RigidBody::apply_torque_impulse);
 
 	ClassDB::bind_method(D_METHOD("set_sleeping", "sleeping"), &RigidBody::set_sleeping);
 	ClassDB::bind_method(D_METHOD("is_sleeping"), &RigidBody::is_sleeping);
@@ -913,10 +928,10 @@ RigidBody::~RigidBody() {
 //////////////////////////////////////////////////////
 //////////////////////////
 
-Ref<KinematicCollision> KinematicBody::_move(const Vector3 &p_motion) {
+Ref<KinematicCollision> KinematicBody::_move(const Vector3 &p_motion, bool p_infinite_inertia) {
 
 	Collision col;
-	if (move_and_collide(p_motion, col)) {
+	if (move_and_collide(p_motion, p_infinite_inertia, col)) {
 		if (motion_cache.is_null()) {
 			motion_cache.instance();
 			motion_cache->owner = this;
@@ -930,11 +945,11 @@ Ref<KinematicCollision> KinematicBody::_move(const Vector3 &p_motion) {
 	return Ref<KinematicCollision>();
 }
 
-bool KinematicBody::move_and_collide(const Vector3 &p_motion, Collision &r_collision) {
+bool KinematicBody::move_and_collide(const Vector3 &p_motion, bool p_infinite_inertia, Collision &r_collision) {
 
 	Transform gt = get_global_transform();
 	PhysicsServer::MotionResult result;
-	bool colliding = PhysicsServer::get_singleton()->body_test_motion(get_rid(), gt, p_motion, &result);
+	bool colliding = PhysicsServer::get_singleton()->body_test_motion(get_rid(), gt, p_motion, p_infinite_inertia, &result);
 
 	if (colliding) {
 		r_collision.collider_metadata = result.collider_metadata;
@@ -960,7 +975,7 @@ bool KinematicBody::move_and_collide(const Vector3 &p_motion, Collision &r_colli
 	return colliding;
 }
 
-Vector3 KinematicBody::move_and_slide(const Vector3 &p_linear_velocity, const Vector3 &p_floor_direction, float p_slope_stop_min_velocity, int p_max_slides, float p_floor_max_angle) {
+Vector3 KinematicBody::move_and_slide(const Vector3 &p_linear_velocity, const Vector3 &p_floor_direction, bool p_infinite_inertia, float p_slope_stop_min_velocity, int p_max_slides, float p_floor_max_angle) {
 
 	Vector3 lv = p_linear_velocity;
 
@@ -982,7 +997,7 @@ Vector3 KinematicBody::move_and_slide(const Vector3 &p_linear_velocity, const Ve
 
 		Collision collision;
 
-		bool collided = move_and_collide(motion, collision);
+		bool collided = move_and_collide(motion, p_infinite_inertia, collision);
 
 		if (collided) {
 
@@ -1055,11 +1070,11 @@ Vector3 KinematicBody::get_floor_velocity() const {
 	return floor_velocity;
 }
 
-bool KinematicBody::test_move(const Transform &p_from, const Vector3 &p_motion) {
+bool KinematicBody::test_move(const Transform &p_from, const Vector3 &p_motion, bool p_infinite_inertia) {
 
 	ERR_FAIL_COND_V(!is_inside_tree(), false);
 
-	return PhysicsServer::get_singleton()->body_test_motion(get_rid(), p_from, p_motion);
+	return PhysicsServer::get_singleton()->body_test_motion(get_rid(), p_from, p_motion, p_infinite_inertia);
 }
 
 void KinematicBody::set_axis_lock(PhysicsServer::BodyAxis p_axis, bool p_lock) {
@@ -1108,10 +1123,10 @@ Ref<KinematicCollision> KinematicBody::_get_slide_collision(int p_bounce) {
 
 void KinematicBody::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("move_and_collide", "rel_vec"), &KinematicBody::_move);
-	ClassDB::bind_method(D_METHOD("move_and_slide", "linear_velocity", "floor_normal", "slope_stop_min_velocity", "max_slides", "floor_max_angle"), &KinematicBody::move_and_slide, DEFVAL(Vector3(0, 0, 0)), DEFVAL(0.05), DEFVAL(4), DEFVAL(Math::deg2rad((float)45)));
+	ClassDB::bind_method(D_METHOD("move_and_collide", "rel_vec", "infinite_inertia"), &KinematicBody::_move, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("move_and_slide", "linear_velocity", "floor_normal", "infinite_inertia", "slope_stop_min_velocity", "max_slides", "floor_max_angle"), &KinematicBody::move_and_slide, DEFVAL(Vector3(0, 0, 0)), DEFVAL(true), DEFVAL(0.05), DEFVAL(4), DEFVAL(Math::deg2rad((float)45)));
 
-	ClassDB::bind_method(D_METHOD("test_move", "from", "rel_vec"), &KinematicBody::test_move);
+	ClassDB::bind_method(D_METHOD("test_move", "from", "rel_vec", "infinite_inertia"), &KinematicBody::test_move);
 
 	ClassDB::bind_method(D_METHOD("is_on_floor"), &KinematicBody::is_on_floor);
 	ClassDB::bind_method(D_METHOD("is_on_ceiling"), &KinematicBody::is_on_ceiling);

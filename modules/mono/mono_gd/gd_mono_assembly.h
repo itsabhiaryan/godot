@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef GD_MONO_ASSEMBLY_H
 #define GD_MONO_ASSEMBLY_H
 
@@ -70,6 +71,7 @@ class GDMonoAssembly {
 	MonoAssembly *assembly;
 	MonoImage *image;
 
+	bool refonly;
 	bool loaded;
 
 	String name;
@@ -89,19 +91,25 @@ class GDMonoAssembly {
 	static bool no_search;
 	static Vector<String> search_dirs;
 
-	static MonoAssembly *_search_hook(MonoAssemblyName *aname, void *user_data);
-	static MonoAssembly *_preload_hook(MonoAssemblyName *aname, char **assemblies_path, void *user_data);
+	static MonoAssembly *assembly_search_hook(MonoAssemblyName *aname, void *user_data);
+	static MonoAssembly *assembly_refonly_search_hook(MonoAssemblyName *aname, void *user_data);
+	static MonoAssembly *assembly_preload_hook(MonoAssemblyName *aname, char **assemblies_path, void *user_data);
+	static MonoAssembly *assembly_refonly_preload_hook(MonoAssemblyName *aname, char **assemblies_path, void *user_data);
 
-	static MonoAssembly *_load_assembly_from(const String &p_name, const String &p_path);
+	static MonoAssembly *_search_hook(MonoAssemblyName *aname, void *user_data, bool refonly);
+	static MonoAssembly *_preload_hook(MonoAssemblyName *aname, char **assemblies_path, void *user_data, bool refonly);
+
+	static GDMonoAssembly *_load_assembly_from(const String &p_name, const String &p_path, bool p_refonly);
 
 	friend class GDMono;
 	static void initialize();
 
 public:
-	Error load(MonoDomain *p_domain);
+	Error load(bool p_refonly);
 	Error wrapper_for_image(MonoImage *p_image);
 	void unload();
 
+	_FORCE_INLINE_ bool is_refonly() const { return refonly; }
 	_FORCE_INLINE_ bool is_loaded() const { return loaded; }
 	_FORCE_INLINE_ MonoImage *get_image() const { return image; }
 	_FORCE_INLINE_ MonoAssembly *get_assembly() const { return assembly; }
@@ -109,10 +117,12 @@ public:
 	_FORCE_INLINE_ String get_path() const { return path; }
 	_FORCE_INLINE_ uint64_t get_modified_time() const { return modified_time; }
 
-	GDMonoClass *get_class(const StringName &p_namespace, const StringName &p_class);
+	GDMonoClass *get_class(const StringName &p_namespace, const StringName &p_name);
 	GDMonoClass *get_class(MonoClass *p_mono_class);
 
 	GDMonoClass *get_object_derived_class(const StringName &p_class);
+
+	static GDMonoAssembly *load_from(const String &p_name, const String &p_path, bool p_refonly);
 
 	GDMonoAssembly(const String &p_name, const String &p_path = String());
 	~GDMonoAssembly();

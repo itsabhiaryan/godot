@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef PHYSICS_BODY__H
 #define PHYSICS_BODY__H
 
@@ -114,7 +115,7 @@ public:
 		MODE_KINEMATIC,
 	};
 
-private:
+protected:
 	bool can_sleep;
 	PhysicsDirectBodyState *state;
 	Mode mode;
@@ -177,9 +178,8 @@ private:
 	void _body_exit_tree(ObjectID p_id);
 
 	void _body_inout(int p_status, ObjectID p_instance, int p_body_shape, int p_local_shape);
-	void _direct_state_changed(Object *p_state);
+	virtual void _direct_state_changed(Object *p_state);
 
-protected:
 	void _notification(int p_what);
 	static void _bind_methods();
 
@@ -242,6 +242,7 @@ public:
 	Array get_colliding_bodies() const;
 
 	void apply_impulse(const Vector3 &p_pos, const Vector3 &p_impulse);
+	void apply_torque_impulse(const Vector3 &p_impulse);
 
 	virtual String get_configuration_warning() const;
 
@@ -285,15 +286,15 @@ private:
 
 	_FORCE_INLINE_ bool _ignores_mode(PhysicsServer::BodyMode) const;
 
-	Ref<KinematicCollision> _move(const Vector3 &p_motion);
+	Ref<KinematicCollision> _move(const Vector3 &p_motion, bool p_infinite_inertia = true);
 	Ref<KinematicCollision> _get_slide_collision(int p_bounce);
 
 protected:
 	static void _bind_methods();
 
 public:
-	bool move_and_collide(const Vector3 &p_motion, Collision &r_collision);
-	bool test_move(const Transform &p_from, const Vector3 &p_motion);
+	bool move_and_collide(const Vector3 &p_motion, bool p_infinite_inertia, Collision &r_collision);
+	bool test_move(const Transform &p_from, const Vector3 &p_motion, bool p_infinite_inertia);
 
 	void set_axis_lock(PhysicsServer::BodyAxis p_axis, bool p_lock);
 	bool get_axis_lock(PhysicsServer::BodyAxis p_axis) const;
@@ -301,7 +302,7 @@ public:
 	void set_safe_margin(float p_margin);
 	float get_safe_margin() const;
 
-	Vector3 move_and_slide(const Vector3 &p_linear_velocity, const Vector3 &p_floor_direction = Vector3(0, 0, 0), float p_slope_stop_min_velocity = 0.05, int p_max_slides = 4, float p_floor_max_angle = Math::deg2rad((float)45));
+	Vector3 move_and_slide(const Vector3 &p_linear_velocity, const Vector3 &p_floor_direction = Vector3(0, 0, 0), bool p_infinite_inertia = true, float p_slope_stop_min_velocity = 0.05, int p_max_slides = 4, float p_floor_max_angle = Math::deg2rad((float)45));
 	bool is_on_floor() const;
 	bool is_on_wall() const;
 	bool is_on_ceiling() const;

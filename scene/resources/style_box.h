@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef STYLE_BOX_H
 #define STYLE_BOX_H
 
@@ -111,11 +112,11 @@ public:
 	void set_region_rect(const Rect2 &p_region_rect);
 	Rect2 get_region_rect() const;
 
-	void set_texture(RES p_texture);
-	RES get_texture() const;
+	void set_texture(Ref<Texture> p_texture);
+	Ref<Texture> get_texture() const;
 
-	void set_normal_map(RES p_normal_map);
-	RES get_normal_map() const;
+	void set_normal_map(Ref<Texture> p_normal_map);
+	Ref<Texture> get_normal_map() const;
 
 	void set_draw_center(bool p_enabled);
 	bool is_draw_center_enabled() const;

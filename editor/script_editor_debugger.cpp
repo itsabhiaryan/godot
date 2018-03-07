@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "script_editor_debugger.h"
 
 #include "editor_node.h"
@@ -192,6 +193,12 @@ public:
 	}
 };
 
+void ScriptEditorDebugger::debug_copy() {
+	String msg = reason->get_text();
+	if (msg == "") return;
+	OS::get_singleton()->set_clipboard(msg);
+}
+
 void ScriptEditorDebugger::debug_next() {
 
 	ERR_FAIL_COND(!breaked);
@@ -337,6 +344,7 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 		step->set_disabled(!can_continue);
 		next->set_disabled(!can_continue);
 		_set_reason_text(error, MESSAGE_ERROR);
+		copy->set_disabled(false);
 		breaked = true;
 		dobreak->set_disabled(true);
 		docontinue->set_disabled(false);
@@ -353,6 +361,7 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 	} else if (p_msg == "debug_exit") {
 
 		breaked = false;
+		copy->set_disabled(true);
 		step->set_disabled(true);
 		next->set_disabled(true);
 		reason->set_text("");
@@ -611,7 +620,9 @@ void ScriptEditorDebugger::_parse_message(const String &p_msg, const Array &p_da
 
 			if (!EditorNode::get_log()->is_visible()) {
 				if (EditorNode::get_singleton()->are_bottom_panels_hidden()) {
-					EditorNode::get_singleton()->make_bottom_panel_item_visible(EditorNode::get_log());
+					if (EDITOR_GET("run/output/always_open_output_on_play")) {
+						EditorNode::get_singleton()->make_bottom_panel_item_visible(EditorNode::get_log());
+					}
 				}
 			}
 			EditorNode::get_log()->add_message(t);
@@ -937,6 +948,8 @@ void ScriptEditorDebugger::_notification(int p_what) {
 
 			inspector->edit(variables);
 
+			copy->set_icon(get_icon("ActionCopy", "EditorIcons"));
+
 			step->set_icon(get_icon("DebugStep", "EditorIcons"));
 			next->set_icon(get_icon("DebugNext", "EditorIcons"));
 			back->set_icon(get_icon("Back", "EditorIcons"));
@@ -952,6 +965,14 @@ void ScriptEditorDebugger::_notification(int p_what) {
 
 			reason->add_color_override("font_color", get_color("error_color", "Editor"));
 
+			bool enable_rl = EditorSettings::get_singleton()->get("docks/scene_tree/draw_relationship_lines");
+			Color rl_color = EditorSettings::get_singleton()->get("docks/scene_tree/relationship_line_color");
+
+			if (enable_rl) {
+				inspect_scene_tree->add_constant_override("draw_relationship_lines", 1);
+				inspect_scene_tree->add_color_override("relationship_line_color", rl_color);
+			} else
+				inspect_scene_tree->add_constant_override("draw_relationship_lines", 0);
 		} break;
 		case NOTIFICATION_PROCESS: {
 
@@ -1052,6 +1073,8 @@ void ScriptEditorDebugger::_notification(int p_what) {
 				break;
 			};
 
+			const uint64_t until = OS::get_singleton()->get_ticks_msec() + 20;
+
 			while (ppeer->get_available_packet_count() > 0) {
 
 				if (pending_in_queue) {
@@ -1116,6 +1139,9 @@ void ScriptEditorDebugger::_notification(int p_what) {
 						break;
 					}
 				}
+
+				if (OS::get_singleton()->get_ticks_msec() > until)
+					break;
 			}
 
 		} break;
@@ -1165,6 +1191,7 @@ void ScriptEditorDebugger::start() {
 	}
 
 	set_process(true);
+	breaked = false;
 }
 
 void ScriptEditorDebugger::pause() {
@@ -1176,6 +1203,7 @@ void ScriptEditorDebugger::unpause() {
 void ScriptEditorDebugger::stop() {
 
 	set_process(false);
+	breaked = false;
 
 	server->stop();
 
@@ -1257,14 +1285,14 @@ void ScriptEditorDebugger::_stack_dump_frame_selected() {
 	emit_signal("goto_script_line", stack_script, int(d["line"]) - 1);
 	stack_script.unref();
 
-	ERR_FAIL_COND(connection.is_null());
-	ERR_FAIL_COND(!connection->is_connected_to_host());
-	///
-
-	Array msg;
-	msg.push_back("get_stack_frame_vars");
-	msg.push_back(d["frame"]);
-	ppeer->put_var(msg);
+	if (connection.is_valid() && connection->is_connected_to_host()) {
+		Array msg;
+		msg.push_back("get_stack_frame_vars");
+		msg.push_back(d["frame"]);
+		ppeer->put_var(msg);
+	} else {
+		inspector->edit(NULL);
+	}
 }
 
 void ScriptEditorDebugger::_output_clear() {
@@ -1608,30 +1636,41 @@ void ScriptEditorDebugger::_error_selected(int p_idx) {
 
 	error_stack->clear();
 	Array st = error_list->get_item_metadata(p_idx);
-	for (int i = 0; i < st.size(); i += 2) {
+	for (int i = 0; i < st.size(); i += 3) {
 
 		String script = st[i];
-		int line = st[i + 1];
+		String func = st[i + 1];
+		int line = st[i + 2];
 		Array md;
 		md.push_back(st[i]);
 		md.push_back(st[i + 1]);
+		md.push_back(st[i + 2]);
 
-		String str = script.get_file() + ":" + itos(line);
+		String str = func;
+		String tooltip_str = TTR("Function:") + " " + func;
+		if (script.length() > 0) {
+			str += " in " + script.get_file();
+			tooltip_str = TTR("File:") + " " + script + "\n" + tooltip_str;
+			if (line > 0) {
+				str += ":line " + itos(line);
+				tooltip_str += "\n" + TTR("Line:") + " " + itos(line);
+			}
+		}
 
 		error_stack->add_item(str);
 		error_stack->set_item_metadata(error_stack->get_item_count() - 1, md);
-		error_stack->set_item_tooltip(error_stack->get_item_count() - 1, TTR("File:") + " " + String(st[i]) + "\n" + TTR("Line:") + " " + itos(line));
+		error_stack->set_item_tooltip(error_stack->get_item_count() - 1, tooltip_str);
 	}
 }
 
 void ScriptEditorDebugger::_error_stack_selected(int p_idx) {
 
 	Array arr = error_stack->get_item_metadata(p_idx);
-	if (arr.size() != 2)
+	if (arr.size() != 3)
 		return;
 
 	Ref<Script> s = ResourceLoader::load(arr[0]);
-	emit_signal("goto_script_line", s, int(arr[1]) - 1);
+	emit_signal("goto_script_line", s, int(arr[2]) - 1);
 }
 
 void ScriptEditorDebugger::set_hide_on_stop(bool p_hide) {
@@ -1686,9 +1725,51 @@ void ScriptEditorDebugger::_clear_remote_objects() {
 	remote_objects.clear();
 }
 
+void ScriptEditorDebugger::_clear_errors_list() {
+
+	error_list->clear();
+	error_count = 0;
+	_notification(NOTIFICATION_PROCESS);
+}
+
+// Right click on specific file(s) or folder(s).
+void ScriptEditorDebugger::_error_list_item_rmb_selected(int p_item, const Vector2 &p_pos) {
+
+	item_menu->clear();
+	item_menu->set_size(Size2(1, 1));
+
+	// Allow specific actions only on one item.
+	bool single_item_selected = error_list->get_selected_items().size() == 1;
+
+	if (single_item_selected) {
+		item_menu->add_icon_item(get_icon("ActionCopy", "EditorIcons"), TTR("Copy Error"), ITEM_MENU_COPY_ERROR);
+	}
+
+	if (item_menu->get_item_count() > 0) {
+		item_menu->set_position(error_list->get_global_position() + p_pos);
+		item_menu->popup();
+	}
+}
+
+void ScriptEditorDebugger::_item_menu_id_pressed(int p_option) {
+
+	switch (p_option) {
+
+		case ITEM_MENU_COPY_ERROR: {
+			String title = error_list->get_item_text(error_list->get_current());
+			String desc = error_list->get_item_tooltip(error_list->get_current());
+
+			OS::get_singleton()->set_clipboard(title + "\n----------\n" + desc);
+		} break;
+	}
+}
+
 void ScriptEditorDebugger::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("_stack_dump_frame_selected"), &ScriptEditorDebugger::_stack_dump_frame_selected);
+
+	ClassDB::bind_method(D_METHOD("debug_copy"), &ScriptEditorDebugger::debug_copy);
+
 	ClassDB::bind_method(D_METHOD("debug_next"), &ScriptEditorDebugger::debug_next);
 	ClassDB::bind_method(D_METHOD("debug_step"), &ScriptEditorDebugger::debug_step);
 	ClassDB::bind_method(D_METHOD("debug_break"), &ScriptEditorDebugger::debug_break);
@@ -1705,6 +1786,10 @@ void ScriptEditorDebugger::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_error_stack_selected"), &ScriptEditorDebugger::_error_stack_selected);
 	ClassDB::bind_method(D_METHOD("_profiler_activate"), &ScriptEditorDebugger::_profiler_activate);
 	ClassDB::bind_method(D_METHOD("_profiler_seeked"), &ScriptEditorDebugger::_profiler_seeked);
+	ClassDB::bind_method(D_METHOD("_clear_errors_list"), &ScriptEditorDebugger::_clear_errors_list);
+
+	ClassDB::bind_method(D_METHOD("_error_list_item_rmb_selected"), &ScriptEditorDebugger::_error_list_item_rmb_selected);
+	ClassDB::bind_method(D_METHOD("_item_menu_id_pressed"), &ScriptEditorDebugger::_item_menu_id_pressed);
 
 	ClassDB::bind_method(D_METHOD("_paused"), &ScriptEditorDebugger::_paused);
 
@@ -1760,6 +1845,13 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 
 		hbc->add_child(memnew(VSeparator));
 
+		copy = memnew(ToolButton);
+		hbc->add_child(copy);
+		copy->set_tooltip(TTR("Copy Error"));
+		copy->connect("pressed", this, "debug_copy");
+
+		hbc->add_child(memnew(VSeparator));
+
 		step = memnew(ToolButton);
 		hbc->add_child(step);
 		step->set_tooltip(TTR("Step Into"));
@@ -1797,6 +1889,7 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 		sc->set_v_size_flags(SIZE_EXPAND_FILL);
 
 		stack_dump = memnew(Tree);
+		stack_dump->set_allow_reselect(true);
 		stack_dump->set_columns(1);
 		stack_dump->set_column_titles_visible(true);
 		stack_dump->set_column_title(0, TTR("Stack Frames"));
@@ -1829,9 +1922,31 @@ ScriptEditorDebugger::ScriptEditorDebugger(EditorNode *p_editor) {
 
 		error_split = memnew(HSplitContainer);
 		VBoxContainer *errvb = memnew(VBoxContainer);
+		HBoxContainer *errhb = memnew(HBoxContainer);
 		errvb->set_h_size_flags(SIZE_EXPAND_FILL);
+		Label *velb = memnew(Label(TTR("Errors:")));
+		velb->set_h_size_flags(SIZE_EXPAND_FILL);
+		errhb->add_child(velb);
+
+		clearbutton = memnew(Button);
+		clearbutton->set_text(TTR("Clear"));
+		clearbutton->connect("pressed", this, "_clear_errors_list");
+		errhb->add_child(clearbutton);
+		errvb->add_child(errhb);
+
 		error_list = memnew(ItemList);
-		errvb->add_margin_child(TTR("Errors:"), error_list, true);
+		error_list->set_v_size_flags(SIZE_EXPAND_FILL);
+		error_list->set_h_size_flags(SIZE_EXPAND_FILL);
+		error_list->connect("item_rmb_selected", this, "_error_list_item_rmb_selected");
+		error_list->set_allow_rmb_select(true);
+		error_list->set_autoscroll_to_bottom(true);
+
+		item_menu = memnew(PopupMenu);
+		item_menu->connect("id_pressed", this, "_item_menu_id_pressed");
+		error_list->add_child(item_menu);
+
+		errvb->add_child(error_list);
+
 		error_split->add_child(errvb);
 
 		errvb = memnew(VBoxContainer);

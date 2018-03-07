@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef TILE_SET_H
 #define TILE_SET_H
 
@@ -70,6 +71,12 @@ public:
 		BIND_BOTTOMRIGHT = 256
 	};
 
+	enum TileMode {
+		SINGLE_TILE,
+		AUTO_TILE,
+		ANIMATED_TILE
+	};
+
 	struct AutotileData {
 		BitmaskMode bitmask_mode;
 		int spacing;
@@ -83,6 +90,7 @@ public:
 		// Default size to prevent invalid value
 		explicit AutotileData() :
 				size(64, 64),
+				spacing(0),
 				icon_coord(0, 0) {
 			bitmask_mode = BITMASK_2X2;
 		}
@@ -103,13 +111,13 @@ private:
 		Ref<NavigationPolygon> navigation_polygon;
 		Ref<ShaderMaterial> material;
 		Color modulate;
-		bool is_autotile;
+		TileMode tile_mode;
 		AutotileData autotile_data;
 
 		// Default modulate for back-compat
 		explicit TileData() :
-				modulate(1, 1, 1),
-				is_autotile(false) {}
+				tile_mode(SINGLE_TILE),
+				modulate(1, 1, 1) {}
 	};
 
 	Map<int, TileData> tile_map;
@@ -145,8 +153,8 @@ public:
 	void tile_set_region(int p_id, const Rect2 &p_region);
 	Rect2 tile_get_region(int p_id) const;
 
-	void tile_set_is_autotile(int p_id, bool p_is_autotile);
-	bool tile_get_is_autotile(int p_id) const;
+	void tile_set_tile_mode(int p_id, TileMode p_tile_mode);
+	TileMode tile_get_tile_mode(int p_id) const;
 
 	void autotile_set_icon_coordinate(int p_id, Vector2 coord);
 	Vector2 autotile_get_icon_coordinate(int p_id) const;

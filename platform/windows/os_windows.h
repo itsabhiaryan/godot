@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef OS_WINDOWS_H
 #define OS_WINDOWS_H
 #include "context_gl_win.h"
@@ -113,6 +114,7 @@ class OS_Windows : public OS {
 	bool window_has_focus;
 	uint32_t last_button_state;
 
+	HCURSOR cursors[CURSOR_MAX] = { NULL };
 	CursorShape cursor_shape;
 
 	InputDefault *input;
@@ -140,14 +142,8 @@ class OS_Windows : public OS {
 
 	// functions used by main to initialize/deintialize the OS
 protected:
-	virtual int get_video_driver_count() const;
-	virtual const char *get_video_driver_name(int p_driver) const;
-
-	virtual int get_audio_driver_count() const;
-	virtual const char *get_audio_driver_name(int p_driver) const;
-
 	virtual void initialize_core();
-	virtual void initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver);
+	virtual Error initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver);
 
 	virtual void set_main_loop(MainLoop *p_main_loop);
 	virtual void delete_main_loop();
@@ -199,6 +195,7 @@ public:
 	virtual Point2 get_window_position() const;
 	virtual void set_window_position(const Point2 &p_position);
 	virtual Size2 get_window_size() const;
+	virtual Size2 get_real_window_size() const;
 	virtual void set_window_size(const Size2 p_size);
 	virtual void set_window_fullscreen(bool p_enabled);
 	virtual bool is_window_fullscreen() const;
@@ -208,6 +205,8 @@ public:
 	virtual bool is_window_minimized() const;
 	virtual void set_window_maximized(bool p_enabled);
 	virtual bool is_window_maximized() const;
+	virtual void set_window_always_on_top(bool p_enabled);
+	virtual bool is_window_always_on_top() const;
 	virtual void request_attention();
 
 	virtual void set_borderless_window(bool p_borderless);
@@ -244,11 +243,16 @@ public:
 	virtual String get_clipboard() const;
 
 	void set_cursor_shape(CursorShape p_shape);
+	virtual void set_custom_mouse_cursor(const RES &p_cursor, CursorShape p_shape, const Vector2 &p_hotspot);
+	void GetMaskBitmaps(HBITMAP hSourceBitmap, COLORREF clrTransparent, OUT HBITMAP &hAndMaskBitmap, OUT HBITMAP &hXorMaskBitmap);
 	void set_icon(const Ref<Image> &p_icon);
 
 	virtual String get_executable_path() const;
 
 	virtual String get_locale() const;
+
+	virtual int get_processor_count() const;
+
 	virtual LatinKeyboardVariant get_latin_keyboard_variant() const;
 
 	virtual void enable_for_stealing_focus(ProcessID pid);
@@ -261,6 +265,10 @@ public:
 
 	virtual String get_system_dir(SystemDir p_dir) const;
 	virtual String get_user_data_dir() const;
+
+	virtual String get_unique_id() const;
+
+	virtual void set_ime_position(const Point2 &p_pos);
 
 	virtual void release_rendering_thread();
 	virtual void make_rendering_thread();
@@ -275,8 +283,8 @@ public:
 	virtual bool is_joy_known(int p_device);
 	virtual String get_joy_guid(int p_device) const;
 
-	virtual void set_use_vsync(bool p_enable);
-	virtual bool is_vsync_enabled() const;
+	virtual void _set_use_vsync(bool p_enable);
+	//virtual bool is_vsync_enabled() const;
 
 	virtual OS::PowerState get_power_state();
 	virtual int get_power_seconds_left();

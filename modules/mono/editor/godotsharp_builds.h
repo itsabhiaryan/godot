@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,9 +27,11 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef GODOTSHARP_BUILDS_H
 #define GODOTSHARP_BUILDS_H
 
+#include "../mono_gd/gd_mono.h"
 #include "mono_bottom_panel.h"
 #include "mono_build_info.h"
 
@@ -55,17 +57,14 @@ private:
 
 	HashMap<MonoBuildInfo, BuildProcess, MonoBuildInfo::Hasher> builds;
 
+	static String _api_folder_name(APIAssembly::Type p_api_type);
+
 	static GodotSharpBuilds *singleton;
 
 	friend class GDMono;
 	static void _register_internal_calls();
 
 public:
-	enum APIType {
-		API_CORE,
-		API_EDITOR
-	};
-
 	enum BuildTool {
 		MSBUILD_MONO,
 #ifdef WINDOWS_ENABLED
@@ -88,11 +87,13 @@ public:
 	bool build_async(const MonoBuildInfo &p_build_info, GodotSharpBuild_ExitCallback p_callback = NULL);
 
 	static bool build_api_sln(const String &p_name, const String &p_api_sln_dir, const String &p_config);
-	static bool copy_api_assembly(const String &p_src_dir, const String &p_dst_dir, const String &p_assembly_name);
+	static bool copy_api_assembly(const String &p_src_dir, const String &p_dst_dir, const String &p_assembly_name, APIAssembly::Type p_api_type);
 
-	static bool make_api_sln(APIType p_api_type);
+	static bool make_api_sln(APIAssembly::Type p_api_type);
 
-	static bool build_project_blocking();
+	static bool build_project_blocking(const String &p_config);
+
+	static bool editor_build_callback();
 
 	GodotSharpBuilds();
 	~GodotSharpBuilds();

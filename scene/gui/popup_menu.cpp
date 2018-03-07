@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "popup_menu.h"
 #include "os/input.h"
 #include "os/keyboard.h"
@@ -42,24 +43,6 @@ String PopupMenu::_get_accel_text(int p_item) const {
 	else if (items[p_item].accel)
 		return keycode_get_string(items[p_item].accel);
 	return String();
-
-	/*
-	String atxt;
-	if (p_accel&KEY_MASK_SHIFT)
-		atxt+="Shift+";
-	if (p_accel&KEY_MASK_ALT)
-		atxt+="Alt+";
-	if (p_accel&KEY_MASK_CTRL)
-		atxt+="Ctrl+";
-	if (p_accel&KEY_MASK_META)
-		atxt+="Meta+";
-
-	p_accel&=KEY_CODE_MASK;
-
-	atxt+=String::chr(p_accel).to_upper();
-
-	return atxt;
-*/
 }
 
 Size2 PopupMenu::get_minimum_size() const {
@@ -136,13 +119,11 @@ int PopupMenu::_get_mouse_over(const Point2 &p_over) const {
 
 	Ref<Font> font = get_font("font");
 	int vseparation = get_constant("vseparation");
-	//int hseparation = get_constant("hseparation");
 	float font_h = font->get_height();
 
 	for (int i = 0; i < items.size(); i++) {
 
-		if (i > 0)
-			ofs.y += vseparation;
+		ofs.y += vseparation;
 		float h;
 
 		if (!items[i].icon.is_null()) {
@@ -208,6 +189,26 @@ void PopupMenu::_submenu_timeout() {
 	submenu_over = -1;
 }
 
+void PopupMenu::_scroll(float p_factor, const Point2 &p_over) {
+
+	const float global_y = get_global_position().y;
+
+	int vseparation = get_constant("vseparation");
+	Ref<Font> font = get_font("font");
+
+	float dy = (vseparation + font->get_height()) * 3 * p_factor;
+	if (dy > 0 && global_y < 0)
+		dy = MIN(dy, -global_y - 1);
+	else if (dy < 0 && global_y + get_size().y > get_viewport_rect().size.y)
+		dy = -MIN(-dy, global_y + get_size().y - get_viewport_rect().size.y - 1);
+	set_position(get_position() + Vector2(0, dy));
+
+	Ref<InputEventMouseMotion> ie;
+	ie.instance();
+	ie->set_position(p_over - Vector2(0, dy));
+	_gui_input(ie);
+}
+
 void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
 
 	Ref<InputEventKey> k = p_event;
@@ -221,7 +222,11 @@ void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
 
 			case KEY_DOWN: {
 
-				for (int i = mouse_over + 1; i < items.size(); i++) {
+				int search_from = mouse_over + 1;
+				if (search_from >= items.size())
+					search_from = 0;
+
+				for (int i = search_from; i < items.size(); i++) {
 
 					if (i < 0 || i >= items.size())
 						continue;
@@ -236,7 +241,11 @@ void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
 			} break;
 			case KEY_UP: {
 
-				for (int i = mouse_over - 1; i >= 0; i--) {
+				int search_from = mouse_over - 1;
+				if (search_from < 0)
+					search_from = items.size() - 1;
+
+				for (int i = search_from; i >= 0; i--) {
 
 					if (i < 0 || i >= items.size())
 						continue;
@@ -249,10 +258,35 @@ void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
 					}
 				}
 			} break;
+
+			case KEY_LEFT: {
+
+				Node *n = get_parent();
+				if (!n)
+					break;
+
+				PopupMenu *pm = Object::cast_to<PopupMenu>(n);
+				if (!pm)
+					break;
+
+				hide();
+			} break;
+
+			case KEY_RIGHT: {
+
+				if (mouse_over >= 0 && mouse_over < items.size() && !items[mouse_over].separator && items[mouse_over].submenu != "" && submenu_over != mouse_over)
+					_activate_submenu(mouse_over);
+			} break;
+
 			case KEY_ENTER:
 			case KEY_KP_ENTER: {
 
 				if (mouse_over >= 0 && mouse_over < items.size() && !items[mouse_over].separator) {
+
+					if (items[mouse_over].submenu != "" && submenu_over != mouse_over) {
+						_activate_submenu(mouse_over);
+						break;
+					}
 
 					activate_item(mouse_over);
 				}
@@ -272,39 +306,13 @@ void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
 			case BUTTON_WHEEL_DOWN: {
 
 				if (get_global_position().y + get_size().y > get_viewport_rect().size.y) {
-
-					int vseparation = get_constant("vseparation");
-					Ref<Font> font = get_font("font");
-
-					Point2 pos = get_position();
-					int s = (vseparation + font->get_height()) * 3;
-					pos.y -= (s * b->get_factor());
-					set_position(pos);
-
-					//update hover
-					Ref<InputEventMouseMotion> ie;
-					ie.instance();
-					ie->set_position(b->get_position() + Vector2(0, s));
-					_gui_input(ie);
+					_scroll(-b->get_factor(), b->get_position());
 				}
 			} break;
 			case BUTTON_WHEEL_UP: {
 
 				if (get_global_position().y < 0) {
-
-					int vseparation = get_constant("vseparation");
-					Ref<Font> font = get_font("font");
-
-					Point2 pos = get_position();
-					int s = (vseparation + font->get_height()) * 3;
-					pos.y += (s * b->get_factor());
-					set_position(pos);
-
-					//update hover
-					Ref<InputEventMouseMotion> ie;
-					ie.instance();
-					ie->set_position(b->get_position() - Vector2(0, s));
-					_gui_input(ie);
+					_scroll(b->get_factor(), b->get_position());
 				}
 			} break;
 			case BUTTON_LEFT: {
@@ -371,6 +379,13 @@ void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
 		if (over != mouse_over) {
 			mouse_over = over;
 			update();
+		}
+	}
+
+	Ref<InputEventPanGesture> pan_gesture = p_event;
+	if (pan_gesture.is_valid()) {
+		if (get_global_position().y + get_size().y > get_viewport_rect().size.y || get_global_position().y < 0) {
+			_scroll(-pan_gesture->get_delta().y, pan_gesture->get_position());
 		}
 	}
 }
@@ -445,7 +460,7 @@ void PopupMenu::_notification(int p_what) {
 
 				if (i == mouse_over) {
 
-					hover->draw(ci, Rect2(item_ofs + Point2(-hseparation, -vseparation), Size2(get_size().width - style->get_minimum_size().width + hseparation * 2, h + vseparation * 2)));
+					hover->draw(ci, Rect2(item_ofs + Point2(-hseparation, -vseparation / 2), Size2(get_size().width - style->get_minimum_size().width + hseparation * 2, h + vseparation)));
 				}
 
 				if (items[i].separator) {
@@ -499,6 +514,13 @@ void PopupMenu::_notification(int p_what) {
 			grab_focus();
 		} break;
 		case NOTIFICATION_MOUSE_EXIT: {
+
+			if (mouse_over >= 0 && (items[mouse_over].submenu == "" || submenu_over != -1)) {
+				mouse_over = -1;
+				update();
+			}
+		} break;
+		case NOTIFICATION_POPUP_HIDE: {
 
 			if (mouse_over >= 0) {
 				mouse_over = -1;
@@ -1201,9 +1223,10 @@ void PopupMenu::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("_submenu_timeout"), &PopupMenu::_submenu_timeout);
 
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "items", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_items", "_get_items");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "items", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL), "_set_items", "_get_items");
 	ADD_PROPERTYNO(PropertyInfo(Variant::BOOL, "hide_on_item_selection"), "set_hide_on_item_selection", "is_hide_on_item_selection");
 	ADD_PROPERTYNO(PropertyInfo(Variant::BOOL, "hide_on_checkable_item_selection"), "set_hide_on_checkable_item_selection", "is_hide_on_checkable_item_selection");
+	ADD_PROPERTYNO(PropertyInfo(Variant::BOOL, "hide_on_state_item_selection"), "set_hide_on_state_item_selection", "is_hide_on_state_item_selection");
 
 	ADD_SIGNAL(MethodInfo("id_pressed", PropertyInfo(Variant::INT, "ID")));
 	ADD_SIGNAL(MethodInfo("index_pressed", PropertyInfo(Variant::INT, "index")));
@@ -1217,6 +1240,7 @@ void PopupMenu::set_invalidate_click_until_motion() {
 PopupMenu::PopupMenu() {
 
 	mouse_over = -1;
+	submenu_over = -1;
 
 	set_focus_mode(FOCUS_ALL);
 	set_as_toplevel(true);

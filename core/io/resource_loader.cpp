@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "resource_loader.h"
 #include "io/resource_import.h"
 #include "os/file_access.h"
@@ -35,6 +36,7 @@
 #include "print_string.h"
 #include "project_settings.h"
 #include "translation.h"
+#include "variant_parser.h"
 ResourceFormatLoader *ResourceLoader::loader[MAX_LOADERS];
 
 int ResourceLoader::loader_count = 0;
@@ -200,7 +202,8 @@ RES ResourceLoader::load(const String &p_path, const String &p_type_hint, bool p
 
 		if (OS::get_singleton()->is_stdout_verbose())
 			print_line("load resource: " + local_path + " (cached)");
-
+		if (r_error)
+			*r_error = OK;
 		return RES(ResourceCache::get(local_path));
 	}
 
@@ -454,6 +457,49 @@ String ResourceLoader::_path_remap(const String &p_path, bool *r_translation_rem
 	if (path_remaps.has(new_path)) {
 		new_path = path_remaps[new_path];
 	}
+
+	if (new_path == p_path) { //did not remap
+		//try file remap
+		Error err;
+		FileAccess *f = FileAccess::open(p_path + ".remap", FileAccess::READ, &err);
+
+		if (f) {
+
+			VariantParser::StreamFile stream;
+			stream.f = f;
+
+			String assign;
+			Variant value;
+			VariantParser::Tag next_tag;
+
+			int lines = 0;
+			String error_text;
+			while (true) {
+
+				assign = Variant();
+				next_tag.fields.clear();
+				next_tag.name = String();
+
+				err = VariantParser::parse_tag_assign_eof(&stream, lines, error_text, next_tag, assign, value, NULL, true);
+				if (err == ERR_FILE_EOF) {
+					break;
+				} else if (err != OK) {
+					ERR_PRINTS("Parse error: " + p_path + ".remap:" + itos(lines) + " error: " + error_text);
+					break;
+				}
+
+				if (assign == "path") {
+					new_path = value;
+					break;
+				} else if (next_tag.name != "remap") {
+					break;
+				}
+			}
+
+			memdelete(f);
+		}
+	}
+
 	return new_path;
 }
 

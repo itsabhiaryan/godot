@@ -1,12 +1,12 @@
 /*************************************************************************/
-/*  polygon_2d_editor_plugin.cpp                                         */
+/*  polygon_2d_editor_plugin.h                                           */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef POLYGON_2D_EDITOR_PLUGIN_H
 #define POLYGON_2D_EDITOR_PLUGIN_H
 
@@ -49,18 +50,24 @@ class Polygon2DEditor : public AbstractPolygon2DEditor {
 	};
 
 	enum UVMode {
+		UV_MODE_CREATE,
 		UV_MODE_EDIT_POINT,
 		UV_MODE_MOVE,
 		UV_MODE_ROTATE,
 		UV_MODE_SCALE,
+		UV_MODE_ADD_SPLIT,
+		UV_MODE_REMOVE_SPLIT,
 		UV_MODE_MAX
 	};
+
+	ToolButton *uv_edit_mode[3];
+	Ref<ButtonGroup> uv_edit_group;
 
 	Polygon2D *node;
 
 	UVMode uv_mode;
 	AcceptDialog *uv_edit;
-	ToolButton *uv_button[4];
+	ToolButton *uv_button[UV_MODE_MAX];
 	ToolButton *b_snap_enable;
 	ToolButton *b_snap_grid;
 	Control *uv_edit_draw;
@@ -74,8 +81,15 @@ class Polygon2DEditor : public AbstractPolygon2DEditor {
 	Vector2 uv_draw_ofs;
 	float uv_draw_zoom;
 	PoolVector<Vector2> uv_prev;
+	PoolVector<Vector2> uv_create_uv_prev;
+	PoolVector<Vector2> uv_create_poly_prev;
+	PoolVector<int> splits_prev;
+
+	Vector2 uv_create_to;
 	int uv_drag_index;
 	bool uv_drag;
+	bool uv_create;
+	bool split_create;
 	UVMode uv_move_current;
 	Vector2 uv_drag_from;
 	bool updating_uv_scroll;
@@ -102,6 +116,8 @@ class Polygon2DEditor : public AbstractPolygon2DEditor {
 	void _set_snap_off_y(float p_val);
 	void _set_snap_step_x(float p_val);
 	void _set_snap_step_y(float p_val);
+
+	void _uv_edit_mode_select(int p_mode);
 
 protected:
 	virtual Node2D *_get_node() const;

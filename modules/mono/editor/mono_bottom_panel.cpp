@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "mono_bottom_panel.h"
 
 #include "../csharp_script.h"
@@ -141,7 +142,7 @@ void MonoBottomPanel::_errors_toggled(bool p_pressed) {
 
 void MonoBottomPanel::_build_project_pressed() {
 
-	GodotSharpBuilds::get_singleton()->build_project_blocking();
+	GodotSharpBuilds::get_singleton()->build_project_blocking("Tools");
 
 	MonoReloadNode::get_singleton()->restart_reload_timer();
 	CSharpLanguage::get_singleton()->reload_assemblies_if_needed(true);
@@ -196,8 +197,8 @@ MonoBottomPanel::MonoBottomPanel(EditorNode *p_editor) {
 		toolbar_hbc->set_h_size_flags(SIZE_EXPAND_FILL);
 		panel_builds_tab->add_child(toolbar_hbc);
 
-		ToolButton *build_project_btn = memnew(ToolButton);
-		build_project_btn->set_text("Build Project");
+		Button *build_project_btn = memnew(Button);
+		build_project_btn->set_text(TTR("Build Project"));
 		build_project_btn->set_focus_mode(FOCUS_NONE);
 		build_project_btn->connect("pressed", this, "_build_project_pressed");
 		toolbar_hbc->add_child(build_project_btn);
@@ -205,7 +206,7 @@ MonoBottomPanel::MonoBottomPanel(EditorNode *p_editor) {
 		toolbar_hbc->add_spacer();
 
 		warnings_btn = memnew(ToolButton);
-		warnings_btn->set_text("Warnings");
+		warnings_btn->set_text(TTR("Warnings"));
 		warnings_btn->set_toggle_mode(true);
 		warnings_btn->set_pressed(true);
 		warnings_btn->set_visible(false);
@@ -214,7 +215,7 @@ MonoBottomPanel::MonoBottomPanel(EditorNode *p_editor) {
 		toolbar_hbc->add_child(warnings_btn);
 
 		errors_btn = memnew(ToolButton);
-		errors_btn->set_text("Errors");
+		errors_btn->set_text(TTR("Errors"));
 		errors_btn->set_toggle_mode(true);
 		errors_btn->set_pressed(true);
 		errors_btn->set_visible(false);
@@ -334,16 +335,14 @@ void MonoBuildTab::_update_issues_list() {
 
 Ref<Texture> MonoBuildTab::get_icon_texture() const {
 
-	// FIXME these icons were removed... find something better
-
 	if (build_exited) {
 		if (build_result == RESULT_ERROR) {
-			return get_icon("DependencyChangedHl", "EditorIcons");
+			return get_icon("StatusError", "EditorIcons");
 		} else {
-			return get_icon("DependencyOkHl", "EditorIcons");
+			return get_icon("StatusSuccess", "EditorIcons");
 		}
 	} else {
-		return get_icon("GraphTime", "EditorIcons");
+		return get_icon("Stop", "EditorIcons");
 	}
 }
 

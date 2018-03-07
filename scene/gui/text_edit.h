@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef TEXT_EDIT_H
 #define TEXT_EDIT_H
 
@@ -161,7 +162,7 @@ class TextEdit : public Control {
 		void set_color_regions(const Vector<ColorRegion> *p_regions) { color_regions = p_regions; }
 		int get_line_width(int p_line) const;
 		int get_max_width(bool p_exclude_hidden = false) const;
-		const Map<int, ColorRegionInfo> &get_color_region_info(int p_line);
+		const Map<int, ColorRegionInfo> &get_color_region_info(int p_line) const;
 		void set(int p_line, const String &p_text);
 		void set_marked(int p_line, bool p_marked) { text[p_line].marked = p_marked; }
 		bool is_marked(int p_line) const { return text[p_line].marked; }
@@ -209,6 +210,7 @@ class TextEdit : public Control {
 
 	//syntax coloring
 	HashMap<String, Color> keywords;
+	HashMap<String, Color> member_keywords;
 
 	Vector<ColorRegion> color_regions;
 
@@ -246,6 +248,7 @@ class TextEdit : public Control {
 	bool draw_caret;
 	bool window_has_focus;
 	bool block_caret;
+	bool right_click_moves_caret;
 
 	bool setting_row;
 	bool wrap;
@@ -270,7 +273,7 @@ class TextEdit : public Control {
 	bool brace_matching_enabled;
 	bool highlight_current_line;
 	bool auto_indent;
-	bool cut_copy_line;
+	String cut_copy_line;
 	bool insert_mode;
 	bool select_identifiers_enabled;
 
@@ -432,6 +435,7 @@ public:
 	void fold_all_lines();
 	void unhide_all_lines();
 	int num_lines_from(int p_line_from, int unhidden_amount) const;
+	bool is_last_visible_line(int p_line) const;
 	bool can_fold(int p_line) const;
 	bool is_folded(int p_line) const;
 	void fold_line(int p_line);
@@ -443,9 +447,10 @@ public:
 	void set_line(int line, String new_text);
 	void backspace_at_cursor();
 
-	void indent_selection_left();
-	void indent_selection_right();
+	void indent_left();
+	void indent_right();
 	int get_indent_level(int p_line) const;
+	bool is_line_comment(int p_line) const;
 
 	inline void set_scroll_pass_end_of_file(bool p_enabled) {
 		scroll_past_end_of_file_enabled = p_enabled;
@@ -481,11 +486,17 @@ public:
 	void cursor_set_block_mode(const bool p_enable);
 	bool cursor_is_block_mode() const;
 
+	void set_right_click_moves_caret(bool p_enable);
+	bool is_right_click_moving_caret() const;
+
 	void set_readonly(bool p_readonly);
 	bool is_readonly() const;
 
 	void set_max_chars(int p_max_chars);
+	int get_max_chars() const;
+
 	void set_wrap(bool p_wrap);
+	bool is_wrapping() const;
 
 	void clear();
 
@@ -536,6 +547,9 @@ public:
 	void add_keyword_color(const String &p_keyword, const Color &p_color);
 	void add_color_region(const String &p_begin_key = String(), const String &p_end_key = String(), const Color &p_color = Color(), bool p_line_only = false);
 	void clear_colors();
+
+	void add_member_keyword(const String &p_keyword, const Color &p_color);
+	void clear_member_keywords();
 
 	int get_v_scroll() const;
 	void set_v_scroll(int p_scroll);

@@ -90,6 +90,7 @@ env_base.android_appattributes_chunk = ""
 env_base.disabled_modules = []
 env_base.use_ptrcall = False
 env_base.split_drivers = False
+env_base.split_modules = False
 env_base.module_version_string = ""
 
 # To decide whether to rebuild a file, use the MD5 sum only if the timestamp has changed.
@@ -144,7 +145,7 @@ opts = Variables(customs, ARGUMENTS)
 
 # Target build options
 opts.Add('arch', "Platform-dependent architecture (arm/arm64/x86/x64/mips/etc)", '')
-opts.Add(EnumVariable('bits', "Target platform bits", 'default', ('default', '32', '64', 'fat')))
+opts.Add(EnumVariable('bits', "Target platform bits", 'default', ('default', '32', '64')))
 opts.Add('p', "Platform (alias for 'platform')", '')
 opts.Add('platform', "Target platform (%s)" % ('|'.join(platform_list), ), '')
 opts.Add(EnumVariable('target', "Compilation target", 'debug', ('debug', 'release_debug', 'release')))
@@ -160,18 +161,18 @@ opts.Add(BoolVariable('xml', "XML format support for resources", True))
 
 # Advanced options
 opts.Add(BoolVariable('disable_3d', "Disable 3D nodes for smaller executable", False))
-opts.Add(BoolVariable('disable_advanced_gui', "Disable advance 3D gui nodes and behaviors", False))
+opts.Add(BoolVariable('disable_advanced_gui', "Disable advanced 3D gui nodes and behaviors", False))
 opts.Add('extra_suffix', "Custom extra suffix added to the base filename of all generated binary files", '')
 opts.Add('unix_global_settings_path', "UNIX-specific path to system-wide settings. Currently only used for templates", '')
 opts.Add(BoolVariable('verbose', "Enable verbose output for the compilation", False))
-opts.Add(BoolVariable('vsproj', "Generate Visual Studio Project.", False))
+opts.Add(BoolVariable('vsproj', "Generate Visual Studio Project", False))
 opts.Add(EnumVariable('warnings', "Set the level of warnings emitted during compilation", 'no', ('extra', 'all', 'moderate', 'no')))
 opts.Add(BoolVariable('progress', "Show a progress indicator during build", True))
 opts.Add(BoolVariable('dev', "If yes, alias for verbose=yes warnings=all", False))
-opts.Add(BoolVariable('openmp', "If yes, enable OpenMP", True))
 opts.Add(EnumVariable('macports_clang', "Build using clang from MacPorts", 'no', ('no', '5.0', 'devel')))
 
 # Thirdparty libraries
+opts.Add(BoolVariable('builtin_bullet', "Use the builtin bullet library", True))
 opts.Add(BoolVariable('builtin_enet', "Use the builtin enet library", True))
 opts.Add(BoolVariable('builtin_freetype', "Use the builtin freetype library", True))
 opts.Add(BoolVariable('builtin_libogg', "Use the builtin libogg library", True))
@@ -180,7 +181,7 @@ opts.Add(BoolVariable('builtin_libtheora', "Use the builtin libtheora library", 
 opts.Add(BoolVariable('builtin_libvorbis', "Use the builtin libvorbis library", True))
 opts.Add(BoolVariable('builtin_libvpx', "Use the builtin libvpx library", True))
 opts.Add(BoolVariable('builtin_libwebp', "Use the builtin libwebp library", True))
-opts.Add(BoolVariable('builtin_openssl', "Use the builtin openssl library", True))
+opts.Add(BoolVariable('builtin_mbedtls', "Use the builtin mbedTLS library", True))
 opts.Add(BoolVariable('builtin_opus', "Use the builtin opus library", True))
 opts.Add(BoolVariable('builtin_pcre2', "Use the builtin pcre2 library)", True))
 opts.Add(BoolVariable('builtin_recast', "Use the builtin recast library", True))
@@ -188,11 +189,14 @@ opts.Add(BoolVariable('builtin_squish', "Use the builtin squish library", True))
 opts.Add(BoolVariable('builtin_thekla_atlas', "Use the builtin thekla_altas library", True))
 opts.Add(BoolVariable('builtin_zlib', "Use the builtin zlib library", True))
 opts.Add(BoolVariable('builtin_zstd', "Use the builtin zstd library", True))
+opts.Add(BoolVariable('no_editor_splash', "Don't use the custom splash screen for the editor", False))
 
-# Environment setup
+# Compilation environment setup
 opts.Add("CXX", "C++ compiler")
 opts.Add("CC", "C compiler")
-opts.Add("CCFLAGS", "Custom flags for the C and C++ compilers")
+opts.Add("LINK", "Linker")
+opts.Add("CCFLAGS", "Custom flags for both the C and C++ compilers")
+opts.Add("CXXFLAGS", "Custom flags for the C++ compiler")
 opts.Add("CFLAGS", "Custom flags for the C compiler")
 opts.Add("LINKFLAGS", "Custom flags for the linker")
 
@@ -239,6 +243,9 @@ if (env_base['target'] == 'debug'):
     env_base.Append(CPPFLAGS=['-DDEBUG_MEMORY_ALLOC'])
     env_base.Append(CPPFLAGS=['-DSCI_NAMESPACE'])
 
+if (env_base['no_editor_splash']):
+    env_base.Append(CPPFLAGS=['-DNO_EDITOR_SPLASH'])
+
 if not env_base['deprecated']:
     env_base.Append(CPPFLAGS=['-DDISABLE_DEPRECATED'])
 
@@ -283,6 +290,8 @@ if selected_platform in platform_list:
                     basename = basename.replace('\\\\', '/')
                     if os.path.isfile(basename + ".h"):
                         env.vs_incs = env.vs_incs + [basename + ".h"]
+                    elif os.path.isfile(basename + ".hpp"):
+                        env.vs_incs = env.vs_incs + [basename + ".hpp"]
                     if os.path.isfile(basename + ".c"):
                         env.vs_srcs = env.vs_srcs + [basename + ".c"]
                     elif os.path.isfile(basename + ".cpp"):
@@ -344,7 +353,7 @@ if selected_platform in platform_list:
             env.Append(CCFLAGS=['-Wall', '-Wno-unused'])
         else: # 'no'
             env.Append(CCFLAGS=['-w'])
-
+        env.Append(CCFLAGS=['-Werror=return-type'])
     #env['platform_libsuffix'] = env['LIBSUFFIX']
 
     suffix = "." + selected_platform
@@ -373,8 +382,6 @@ if selected_platform in platform_list:
         suffix += ".32"
     elif (env["bits"] == "64"):
         suffix += ".64"
-    elif (env["bits"] == "fat"):
-        suffix += ".fat"
 
     suffix += env.extra_suffix
 
@@ -407,9 +414,7 @@ if selected_platform in platform_list:
 
     methods.update_version(env.module_version_string)
 
-    suffix += env.module_version_string
-
-    env["PROGSUFFIX"] = suffix + env["PROGSUFFIX"]
+    env["PROGSUFFIX"] = suffix + env.module_version_string + env["PROGSUFFIX"]
     env["OBJSUFFIX"] = suffix + env["OBJSUFFIX"]
     env["LIBSUFFIX"] = suffix + env["LIBSUFFIX"]
     env["SHLIBSUFFIX"] = suffix + env["SHLIBSUFFIX"]
@@ -438,8 +443,9 @@ if selected_platform in platform_list:
     if not env['verbose']:
         methods.no_verbose(sys, env)
 
-    if (True): # FIXME: detect GLES3
-        env.Append( BUILDERS = { 'GLES3_GLSL' : env.Builder(action = methods.build_gles3_headers, suffix = 'glsl.gen.h',src_suffix = '.glsl') } )
+    if (not env["platform"] == "server"): # FIXME: detect GLES3
+        env.Append( BUILDERS = { 'GLES3_GLSL' : env.Builder(action = methods.build_gles3_headers, suffix = 'glsl.gen.h', src_suffix = '.glsl') } )
+        env.Append( BUILDERS = { 'GLES2_GLSL' : env.Builder(action = methods.build_gles2_headers, suffix = 'glsl.gen.h', src_suffix = '.glsl') } )
 
     scons_cache_path = os.environ.get("SCONS_CACHE")
     if scons_cache_path != None:
@@ -491,27 +497,29 @@ screen = sys.stdout
 node_count = 0
 node_count_max = 0
 node_count_interval = 1
-node_pruning = 8 # Number of nodes to process before prunning the cache
 if ('env' in locals()):
     node_count_fname = str(env.Dir('#')) + '/.scons_node_count'
-show_progress = env['progress']
+# Progress reporting is not available in non-TTY environments since it
+# messes with the output (for example, when writing to a file)
+if sys.stdout.isatty():
+    show_progress = env['progress']
+else:
+    show_progress = False
 
 import time, math
 
 class cache_progress:
     # The default is 1 GB cache and 12 hours half life
     def __init__(self, path = None, limit = 1073741824, half_life = 43200):
-        global node_pruning
         self.path = path
         self.limit = limit
         self.exponent_scale = math.log(2) / half_life
         if env['verbose'] and path != None:
             screen.write('Current cache limit is ' + self.convert_size(limit) + ' (used: ' + self.convert_size(self.get_size(path)) + ')\n')
-        self.pruning = node_pruning
         self.delete(self.file_list())
 
     def __call__(self, node, *args, **kw):
-        global node_count, node_count_max, node_count_interval, node_count_fname, node_pruning, show_progress
+        global node_count, node_count_max, node_count_interval, node_count_fname, show_progress
         if show_progress:
             # Print the progress percentage
             node_count += node_count_interval
@@ -524,11 +532,6 @@ class cache_progress:
             else:
                 screen.write('\r[Initial build] ')
                 screen.flush()
-        # Prune if the number of nodes processed is 'node_pruning' or bigger
-        self.pruning -= node_count_interval
-        if self.pruning <= 0:
-            self.pruning = node_pruning
-            self.delete(self.file_list())
 
     def delete(self, files):
         if len(files) == 0:
@@ -536,7 +539,7 @@ class cache_progress:
         if env['verbose']:
             # Utter something
             screen.write('\rPurging %d %s from cache...\n' % (len(files), len(files) > 1 and 'files' or 'file'))
-        map(os.remove, files)
+        [os.remove(f) for f in files]
 
     def file_list(self):
         if self.path == None:
@@ -553,9 +556,9 @@ class cache_progress:
         # decay since the ctime, and return a list with the entries
         # (filename, size, weight).
         current_time = time.time()
-        file_stat = [(x[0], x[1][0], x[1][0] * math.exp(self.exponent_scale * (x[1][1] - current_time))) for x in file_stat]
-        # Sort by highest weight (most sensible to keep) first
-        file_stat.sort(key=lambda x: x[2], reverse=True)
+        file_stat = [(x[0], x[1][0], (current_time - x[1][1])) for x in file_stat]
+        # Sort by the most resently accessed files (most sensible to keep) first
+        file_stat.sort(key=lambda x: x[2])
         # Search for the first entry where the storage limit is
         # reached
         sum, mark = 0, None

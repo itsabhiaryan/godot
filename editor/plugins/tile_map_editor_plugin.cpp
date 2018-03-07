@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "tile_map_editor_plugin.h"
 
 #include "canvas_item_editor_plugin.h"
@@ -302,7 +303,7 @@ void TileMapEditor::_update_palette() {
 		if (tex.is_valid()) {
 			Rect2 region = tileset->tile_get_region(entries[i].id);
 
-			if (tileset->tile_get_is_autotile(entries[i].id)) {
+			if (tileset->tile_get_tile_mode(entries[i].id) == TileSet::AUTO_TILE) {
 				int spacing = tileset->autotile_get_spacing(entries[i].id);
 				region.size = tileset->autotile_get_size(entries[i].id);
 				region.position += (region.size + Vector2(spacing, spacing)) * tileset->autotile_get_icon_coordinate(entries[i].id);
@@ -505,7 +506,7 @@ void TileMapEditor::_draw_cell(int p_cell, const Point2i &p_point, bool p_flip_h
 	Vector2 tile_ofs = node->get_tileset()->tile_get_texture_offset(p_cell);
 
 	Rect2 r = node->get_tileset()->tile_get_region(p_cell);
-	if (node->get_tileset()->tile_get_is_autotile(p_cell)) {
+	if (node->get_tileset()->tile_get_tile_mode(p_cell) == TileSet::AUTO_TILE) {
 		int spacing = node->get_tileset()->autotile_get_spacing(p_cell);
 		r.size = node->get_tileset()->autotile_get_size(p_cell);
 		r.position += (r.size + Vector2(spacing, spacing)) * node->get_tileset()->autotile_get_icon_coordinate(p_cell);

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef RASTERIZER_H
 #define RASTERIZER_H
 
@@ -473,6 +474,8 @@ public:
 	virtual RID particles_create() = 0;
 
 	virtual void particles_set_emitting(RID p_particles, bool p_emitting) = 0;
+	virtual bool particles_get_emitting(RID p_particles) = 0;
+
 	virtual void particles_set_amount(RID p_particles, int p_amount) = 0;
 	virtual void particles_set_lifetime(RID p_particles, float p_lifetime) = 0;
 	virtual void particles_set_one_shot(RID p_particles, bool p_one_shot) = 0;
@@ -746,14 +749,16 @@ public:
 		struct CommandMesh : public Command {
 
 			RID mesh;
-			RID skeleton;
+			RID texture;
+			RID normal_map;
 			CommandMesh() { type = TYPE_MESH; }
 		};
 
 		struct CommandMultiMesh : public Command {
 
 			RID multimesh;
-			RID skeleton;
+			RID texture;
+			RID normal_map;
 			CommandMultiMesh() { type = TYPE_MULTIMESH; }
 		};
 
@@ -917,7 +922,7 @@ public:
 					case Item::Command::TYPE_MESH: {
 
 						const Item::CommandMesh *mesh = static_cast<const Item::CommandMesh *>(c);
-						AABB aabb = RasterizerStorage::base_singleton->mesh_get_aabb(mesh->mesh, mesh->skeleton);
+						AABB aabb = RasterizerStorage::base_singleton->mesh_get_aabb(mesh->mesh, RID());
 
 						r = Rect2(aabb.position.x, aabb.position.y, aabb.size.x, aabb.size.y);
 
@@ -1009,7 +1014,7 @@ public:
 	virtual void canvas_begin() = 0;
 	virtual void canvas_end() = 0;
 
-	virtual void canvas_render_items(Item *p_item_list, int p_z, const Color &p_modulate, Light *p_light) = 0;
+	virtual void canvas_render_items(Item *p_item_list, int p_z, const Color &p_modulate, Light *p_light, const Transform2D &p_base_transform) = 0;
 	virtual void canvas_debug_viewport_shadows(Light *p_lights_with_shadow) = 0;
 
 	struct LightOccluderInstance : public RID_Data {

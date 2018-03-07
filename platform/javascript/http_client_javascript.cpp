@@ -3,10 +3,10 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "http_request.h"
 #include "io/http_client.h"
 
@@ -42,12 +43,12 @@ Error HTTPClient::connect_to_host(const String &p_host, int p_port, bool p_ssl, 
 
 	host = p_host;
 
-	String host_lower = conn_host.to_lower();
+	String host_lower = host.to_lower();
 	if (host_lower.begins_with("http://")) {
-		host.replace_first("http://", "");
+		host = host.substr(7, host.length() - 7);
 	} else if (host_lower.begins_with("https://")) {
 		use_tls = true;
-		host.replace_first("https://", "");
+		host = host.substr(8, host.length() - 8);
 	}
 
 	ERR_FAIL_COND_V(host.length() < HOST_MIN_LEN, ERR_INVALID_PARAMETER);
@@ -80,6 +81,8 @@ Ref<StreamPeer> HTTPClient::get_connection() const {
 Error HTTPClient::prepare_request(Method p_method, const String &p_url, const Vector<String> &p_headers) {
 
 	ERR_FAIL_INDEX_V(p_method, METHOD_MAX, ERR_INVALID_PARAMETER);
+	ERR_EXPLAIN("HTTP methods TRACE and CONNECT are not supported for the HTML5 platform");
+	ERR_FAIL_COND_V(p_method == METHOD_TRACE || p_method == METHOD_CONNECT, ERR_UNAVAILABLE);
 	ERR_FAIL_COND_V(status != STATUS_CONNECTED, ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(host.empty(), ERR_UNCONFIGURED);
 	ERR_FAIL_COND_V(port < 0, ERR_UNCONFIGURED);
@@ -157,7 +160,7 @@ int HTTPClient::get_response_code() const {
 
 Error HTTPClient::get_response_headers(List<String> *r_response) {
 
-	if (!polled_response_header.size())
+	if (polled_response_header.empty())
 		return ERR_INVALID_PARAMETER;
 
 	Vector<String> header_lines = polled_response_header.split("\r\n", false);
@@ -190,8 +193,6 @@ PoolByteArray HTTPClient::read_response_body_chunk() {
 	if (response_read_offset == polled_response.size()) {
 		status = STATUS_CONNECTED;
 		polled_response.resize(0);
-		polled_response_code = 0;
-		polled_response_header = String();
 		godot_xhr_reset(xhr_id);
 	}
 
@@ -237,34 +238,47 @@ Error HTTPClient::poll() {
 			return ERR_CONNECTION_ERROR;
 
 		case STATUS_REQUESTING:
-			polled_response_code = godot_xhr_get_status(xhr_id);
-			int response_length = godot_xhr_get_response_length(xhr_id);
-			if (response_length == 0) {
-				godot_xhr_ready_state_t ready_state = godot_xhr_get_ready_state(xhr_id);
-				if (ready_state == XHR_READY_STATE_HEADERS_RECEIVED || ready_state == XHR_READY_STATE_LOADING) {
-					return OK;
-				} else {
-					status = STATUS_CONNECTION_ERROR;
-					return ERR_CONNECTION_ERROR;
+
+#ifdef DEBUG_ENABLED
+			if (!has_polled) {
+				has_polled = true;
+			} else {
+				// forcing synchronous requests is not possible on the web
+				if (last_polling_frame == Engine::get_singleton()->get_idle_frames()) {
+					WARN_PRINT("HTTPClient polled multiple times in one frame, "
+							   "but request cannot progress more than once per "
+							   "frame on the HTML5 platform.");
 				}
+			}
+			last_polling_frame = Engine::get_singleton()->get_idle_frames();
+#endif
+
+			polled_response_code = godot_xhr_get_status(xhr_id);
+			if (godot_xhr_get_ready_state(xhr_id) != XHR_READY_STATE_DONE) {
+				return OK;
+			} else if (!polled_response_code) {
+				status = STATUS_CONNECTION_ERROR;
+				return ERR_CONNECTION_ERROR;
 			}
 
 			status = STATUS_BODY;
 
 			PoolByteArray bytes;
 			int len = godot_xhr_get_response_headers_length(xhr_id);
-			bytes.resize(len);
+			bytes.resize(len + 1);
+
 			PoolByteArray::Write write = bytes.write();
 			godot_xhr_get_response_headers(xhr_id, reinterpret_cast<char *>(write.ptr()), len);
+			write[len] = 0;
 			write = PoolByteArray::Write();
 
 			PoolByteArray::Read read = bytes.read();
 			polled_response_header = String::utf8(reinterpret_cast<const char *>(read.ptr()));
 			read = PoolByteArray::Read();
 
-			polled_response.resize(response_length);
+			polled_response.resize(godot_xhr_get_response_length(xhr_id));
 			write = polled_response.write();
-			godot_xhr_get_response(xhr_id, write.ptr(), response_length);
+			godot_xhr_get_response(xhr_id, write.ptr(), polled_response.size());
 			write = PoolByteArray::Write();
 			break;
 	}
@@ -279,6 +293,10 @@ HTTPClient::HTTPClient() {
 	port = -1;
 	use_tls = false;
 	polled_response_code = 0;
+#ifdef DEBUG_ENABLED
+	has_polled = false;
+	last_polling_frame = 0;
+#endif
 }
 
 HTTPClient::~HTTPClient() {

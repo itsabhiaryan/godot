@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "physics_2d_server_sw.h"
 #include "broad_phase_2d_basic.h"
 #include "broad_phase_2d_hash_grid.h"
@@ -961,14 +962,14 @@ void Physics2DServerSW::body_set_pickable(RID p_body, bool p_pickable) {
 	body->set_pickable(p_pickable);
 }
 
-bool Physics2DServerSW::body_test_motion(RID p_body, const Transform2D &p_from, const Vector2 &p_motion, real_t p_margin, MotionResult *r_result) {
+bool Physics2DServerSW::body_test_motion(RID p_body, const Transform2D &p_from, const Vector2 &p_motion, bool p_infinite_inertia, real_t p_margin, MotionResult *r_result) {
 
 	Body2DSW *body = body_owner.get(p_body);
 	ERR_FAIL_COND_V(!body, false);
 	ERR_FAIL_COND_V(!body->get_space(), false);
 	ERR_FAIL_COND_V(body->get_space()->is_locked(), false);
 
-	return body->get_space()->test_body_motion(body, p_from, p_motion, p_margin, r_result);
+	return body->get_space()->test_body_motion(body, p_from, p_motion, p_infinite_inertia, p_margin, r_result);
 }
 
 Physics2DDirectBodyState *Physics2DServerSW::body_get_direct_state(RID p_body) {
@@ -1012,6 +1013,33 @@ real_t Physics2DServerSW::joint_get_param(RID p_joint, JointParam p_param) const
 	}
 
 	return 0;
+}
+
+void Physics2DServerSW::joint_disable_collisions_between_bodies(RID p_joint, const bool p_disable) {
+	Joint2DSW *joint = joint_owner.get(p_joint);
+	ERR_FAIL_COND(!joint);
+
+	joint->disable_collisions_between_bodies(p_disable);
+
+	if (2 == joint->get_body_count()) {
+		Body2DSW *body_a = *joint->get_body_ptr();
+		Body2DSW *body_b = *(joint->get_body_ptr() + 1);
+
+		if (p_disable) {
+			body_add_collision_exception(body_a->get_self(), body_b->get_self());
+			body_add_collision_exception(body_b->get_self(), body_a->get_self());
+		} else {
+			body_remove_collision_exception(body_a->get_self(), body_b->get_self());
+			body_remove_collision_exception(body_b->get_self(), body_a->get_self());
+		}
+	}
+}
+
+bool Physics2DServerSW::joint_is_disabled_collisions_between_bodies(RID p_joint) const {
+	const Joint2DSW *joint = joint_owner.get(p_joint);
+	ERR_FAIL_COND_V(!joint, true);
+
+	return joint->is_disabled_collisions_between_bodies();
 }
 
 RID Physics2DServerSW::pin_joint_create(const Vector2 &p_pos, RID p_body_a, RID p_body_b) {

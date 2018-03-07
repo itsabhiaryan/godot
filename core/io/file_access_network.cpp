@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "file_access_network.h"
 #include "io/ip.h"
 #include "marshalls.h"
@@ -82,7 +83,7 @@ int64_t FileAccessNetworkClient::get_64() {
 
 void FileAccessNetworkClient::_thread_func() {
 
-	client->set_nodelay(true);
+	client->set_no_delay(true);
 	while (!quit) {
 
 		DEBUG_PRINT("SEM WAIT - " + itos(sem->get()));
@@ -417,8 +418,6 @@ int FileAccessNetwork::get_buffer(uint8_t *p_dst, int p_length) const {
 		if (page != last_page) {
 			buffer_mutex->lock();
 			if (pages[page].buffer.empty()) {
-				//fuck
-
 				waiting_on_page = page;
 				for (int j = 0; j < read_ahead; j++) {
 

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "java_class_wrapper.h"
 #include "thread_jandroid.h"
 
@@ -1116,7 +1117,7 @@ Ref<JavaClass> JavaClassWrapper::wrap(const String &p_class) {
 		}
 
 		if (!valid) {
-			print_line("Method Can't be bound (unsupported arguments): " + p_class + "::" + str_method);
+			print_line("Method can't be bound (unsupported arguments): " + p_class + "::" + str_method);
 			env->DeleteLocalRef(obj);
 			env->DeleteLocalRef(param_types);
 			continue;
@@ -1129,7 +1130,7 @@ Ref<JavaClass> JavaClassWrapper::wrap(const String &p_class) {
 		String strsig;
 		uint32_t sig = 0;
 		if (!_get_type_sig(env, return_type, sig, strsig)) {
-			print_line("Method Can't be bound (unsupported return type): " + p_class + "::" + str_method);
+			print_line("Method can't be bound (unsupported return type): " + p_class + "::" + str_method);
 			env->DeleteLocalRef(obj);
 			env->DeleteLocalRef(param_types);
 			env->DeleteLocalRef(return_type);
@@ -1138,8 +1139,6 @@ Ref<JavaClass> JavaClassWrapper::wrap(const String &p_class) {
 
 		signature += strsig;
 		mi.return_type = sig;
-
-		print_line("METHOD: " + str_method + " SIG: " + signature + " static: " + itos(mi._static));
 
 		bool discard = false;
 
@@ -1172,11 +1171,9 @@ Ref<JavaClass> JavaClassWrapper::wrap(const String &p_class) {
 
 			if (new_likeliness > existing_likeliness) {
 				java_class->methods[str_method].erase(E);
-				print_line("replace old");
 				break;
 			} else {
 				discard = true;
-				print_line("old is better");
 			}
 		}
 

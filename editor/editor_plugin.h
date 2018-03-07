@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef EDITOR_PLUGIN_H
 #define EDITOR_PLUGIN_H
 
@@ -76,6 +77,9 @@ public:
 	Array get_open_scenes() const;
 	ScriptEditor *get_script_editor();
 
+	void select_file(const String &p_file);
+	String get_selected_path() const;
+
 	void inspect_object(Object *p_obj, const String &p_for_property = String());
 
 	EditorSelection *get_selection();
@@ -85,6 +89,9 @@ public:
 	EditorFileSystem *get_resource_file_system();
 
 	Control *get_base_control();
+
+	void set_plugin_enabled(const String &p_plugin, bool p_enabled);
+	bool is_plugin_enabled(const String &p_plugin) const;
 
 	Error save_scene();
 	void save_scene_as(const String &p_scene, bool p_with_preview = true);
@@ -141,6 +148,7 @@ public:
 	//TODO: send a resource for editing to the editor node?
 
 	void add_control_to_container(CustomControlContainer p_location, Control *p_control);
+	void remove_control_from_container(CustomControlContainer p_location, Control *p_control);
 	ToolButton *add_control_to_bottom_panel(Control *p_control, const String &p_title);
 	void add_control_to_dock(DockSlot p_slot, Control *p_control);
 	void remove_control_from_docks(Control *p_control);
@@ -174,7 +182,7 @@ public:
 	virtual bool handles(Object *p_object) const;
 	virtual Dictionary get_state() const; //save editor state so it can't be reloaded when reloading scene
 	virtual void set_state(const Dictionary &p_state); //restore editor state (likely was saved with the scene)
-	virtual void clear(); // clear any temporary data in te editor, reset it (likely new scene or load another scene)
+	virtual void clear(); // clear any temporary data in the editor, reset it (likely new scene or load another scene)
 	virtual void save_external_data(); // if editor references external resources/scenes, save them
 	virtual void apply_changes(); // if changes are pending in editor, apply them
 	virtual void get_breakpoints(List<String> *p_breakpoints);
@@ -203,6 +211,9 @@ public:
 
 	void add_scene_import_plugin(const Ref<EditorSceneImporter> &p_importer);
 	void remove_scene_import_plugin(const Ref<EditorSceneImporter> &p_importer);
+
+	void add_autoload_singleton(const String &p_name, const String &p_path);
+	void remove_autoload_singleton(const String &p_name);
 
 	EditorPlugin();
 	virtual ~EditorPlugin();

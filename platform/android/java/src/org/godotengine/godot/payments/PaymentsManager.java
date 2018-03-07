@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 package org.godotengine.godot.payments;
 
 import android.app.Activity;
@@ -92,11 +93,21 @@ public class PaymentsManager {
 		@Override
 		public void onServiceDisconnected(ComponentName name) {
 			mService = null;
+
+			// At this stage, godotPaymentV3 might not have been initialized yet.
+			if (godotPaymentV3 != null) {
+				godotPaymentV3.callbackDisconnected();
+			}
 		}
 
 		@Override
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			mService = IInAppBillingService.Stub.asInterface(service);
+
+			// At this stage, godotPaymentV3 might not have been initialized yet.
+			if (godotPaymentV3 != null) {
+				godotPaymentV3.callbackConnected();
+			}
 		}
 	};
 
@@ -120,6 +131,10 @@ public class PaymentsManager {
 
 		}
 				.purchase(sku, transactionId);
+	}
+
+	public boolean isConnected() {
+		return mService != null;
 	}
 
 	public void consumeUnconsumedPurchases() {

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef VISUALSERVERCANVAS_H
 #define VISUALSERVERCANVAS_H
 
@@ -39,7 +40,7 @@ public:
 
 		RID parent; // canvas it belongs to
 		List<Item *>::Element *E;
-		int z;
+		int z_index;
 		bool z_relative;
 		bool sort_y;
 		Color modulate;
@@ -50,10 +51,12 @@ public:
 
 		Vector<Item *> child_items;
 
+		RID skeleton;
+
 		Item() {
 			children_order_dirty = true;
 			E = NULL;
-			z = 0;
+			z_index = 0;
 			modulate = Color(1, 1, 1, 1);
 			self_modulate = Color(1, 1, 1, 1);
 			sort_y = false;
@@ -181,15 +184,16 @@ public:
 	void canvas_item_add_primitive(RID p_item, const Vector<Point2> &p_points, const Vector<Color> &p_colors, const Vector<Point2> &p_uvs, RID p_texture, float p_width = 1.0, RID p_normal_map = RID());
 	void canvas_item_add_polygon(RID p_item, const Vector<Point2> &p_points, const Vector<Color> &p_colors, const Vector<Point2> &p_uvs = Vector<Point2>(), RID p_texture = RID(), RID p_normal_map = RID(), bool p_antialiased = false);
 	void canvas_item_add_triangle_array(RID p_item, const Vector<int> &p_indices, const Vector<Point2> &p_points, const Vector<Color> &p_colors, const Vector<Point2> &p_uvs = Vector<Point2>(), RID p_texture = RID(), int p_count = -1, RID p_normal_map = RID());
-	void canvas_item_add_mesh(RID p_item, const RID &p_mesh, RID p_skeleton = RID());
-	void canvas_item_add_multimesh(RID p_item, RID p_mesh, RID p_skeleton = RID());
+	void canvas_item_add_mesh(RID p_item, const RID &p_mesh, RID p_texture = RID(), RID p_normal_map = RID());
+	void canvas_item_add_multimesh(RID p_item, RID p_mesh, RID p_texture = RID(), RID p_normal_map = RID());
 	void canvas_item_add_particles(RID p_item, RID p_particles, RID p_texture, RID p_normal, int p_h_frames, int p_v_frames);
 	void canvas_item_add_set_transform(RID p_item, const Transform2D &p_transform);
 	void canvas_item_add_clip_ignore(RID p_item, bool p_ignore);
 	void canvas_item_set_sort_children_by_y(RID p_item, bool p_enable);
-	void canvas_item_set_z(RID p_item, int p_z);
+	void canvas_item_set_z_index(RID p_item, int p_z);
 	void canvas_item_set_z_as_relative_to_parent(RID p_item, bool p_enable);
 	void canvas_item_set_copy_to_backbuffer(RID p_item, bool p_enable, const Rect2 &p_rect);
+	void canvas_item_attach_skeleton(RID p_item, RID p_skeleton);
 
 	void canvas_item_clear(RID p_item);
 	void canvas_item_set_draw_index(RID p_item, int p_index);

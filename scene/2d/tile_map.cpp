@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "tile_map.h"
 
 #include "io/marshalls.h"
@@ -336,7 +337,7 @@ void TileMap::_update_dirty_quadrants() {
 					debug_canvas_item = vs->canvas_item_create();
 					vs->canvas_item_set_parent(debug_canvas_item, canvas_item);
 					vs->canvas_item_set_z_as_relative_to_parent(debug_canvas_item, false);
-					vs->canvas_item_set_z(debug_canvas_item, VS::CANVAS_ITEM_Z_MAX - 1);
+					vs->canvas_item_set_z_index(debug_canvas_item, VS::CANVAS_ITEM_Z_MAX - 1);
 					q.canvas_items.push_back(debug_canvas_item);
 					prev_debug_canvas_item = debug_canvas_item;
 				}
@@ -352,7 +353,7 @@ void TileMap::_update_dirty_quadrants() {
 			}
 
 			Rect2 r = tile_set->tile_get_region(c.id);
-			if (tile_set->tile_get_is_autotile(c.id)) {
+			if (tile_set->tile_get_tile_mode(c.id) == TileSet::AUTO_TILE) {
 				int spacing = tile_set->autotile_get_spacing(c.id);
 				r.size = tile_set->autotile_get_size(c.id);
 				r.position += (r.size + Vector2(spacing, spacing)) * Vector2(c.autotile_coord_x, c.autotile_coord_y);
@@ -446,7 +447,7 @@ void TileMap::_update_dirty_quadrants() {
 			for (int i = 0; i < shapes.size(); i++) {
 				Ref<Shape2D> shape = shapes[i].shape;
 				if (shape.is_valid()) {
-					if (!tile_set->tile_get_is_autotile(c.id) || (shapes[i].autotile_coord.x == c.autotile_coord_x && shapes[i].autotile_coord.y == c.autotile_coord_y)) {
+					if (tile_set->tile_get_tile_mode(c.id) == TileSet::SINGLE_TILE || (shapes[i].autotile_coord.x == c.autotile_coord_x && shapes[i].autotile_coord.y == c.autotile_coord_y)) {
 						Transform2D xform;
 						xform.set_origin(offset.floor());
 
@@ -473,7 +474,7 @@ void TileMap::_update_dirty_quadrants() {
 			if (navigation) {
 				Ref<NavigationPolygon> navpoly;
 				Vector2 npoly_ofs;
-				if (tile_set->tile_get_is_autotile(c.id)) {
+				if (tile_set->tile_get_tile_mode(c.id) == TileSet::AUTO_TILE) {
 					navpoly = tile_set->autotile_get_navigation_polygon(c.id, Vector2(c.autotile_coord_x, c.autotile_coord_y));
 					npoly_ofs = Vector2();
 				} else {
@@ -486,7 +487,7 @@ void TileMap::_update_dirty_quadrants() {
 					xform.set_origin(offset.floor() + q.pos);
 					_fix_cell_transform(xform, c, npoly_ofs + center_ofs, s);
 
-					int pid = navigation->navpoly_create(navpoly, nav_rel * xform);
+					int pid = navigation->navpoly_add(navpoly, nav_rel * xform);
 
 					Quadrant::NavPoly np;
 					np.id = pid;
@@ -496,7 +497,7 @@ void TileMap::_update_dirty_quadrants() {
 			}
 
 			Ref<OccluderPolygon2D> occluder;
-			if (tile_set->tile_get_is_autotile(c.id)) {
+			if (tile_set->tile_get_tile_mode(c.id) == TileSet::AUTO_TILE) {
 				occluder = tile_set->autotile_get_light_occluder(c.id, Vector2(c.autotile_coord_x, c.autotile_coord_y));
 			} else {
 				occluder = tile_set->tile_get_light_occluder(c.id);
@@ -739,13 +740,33 @@ void TileMap::update_bitmask_area(const Vector2 &p_pos) {
 	}
 }
 
+void TileMap::update_bitmask_region(const Vector2 &p_start, const Vector2 &p_end) {
+
+	if ((p_end.x < p_start.x || p_end.y < p_start.y) || (p_end.x == p_start.x && p_end.y == p_start.y)) {
+		int i;
+		Array a = get_used_cells();
+		for (i = 0; i < a.size(); i++) {
+			// update_bitmask_area() in order to update cells adjacent to the
+			// current cell, since ordering in array may not be reliable
+			Vector2 vector = (Vector2)a[i];
+			update_bitmask_area(Vector2(vector.x, vector.y));
+		}
+		return;
+	}
+	for (int x = p_start.x - 1; x <= p_end.x + 1; x++) {
+		for (int y = p_start.y - 1; y <= p_end.y + 1; y++) {
+			update_cell_bitmask(x, y);
+		}
+	}
+}
+
 void TileMap::update_cell_bitmask(int p_x, int p_y) {
 
 	PosKey p(p_x, p_y);
 	Map<PosKey, Cell>::Element *E = tile_map.find(p);
 	if (E != NULL) {
 		int id = get_cell(p_x, p_y);
-		if (tile_set->tile_get_is_autotile(id)) {
+		if (tile_set->tile_get_tile_mode(id) == TileSet::AUTO_TILE) {
 			uint16_t mask = 0;
 			if (tile_set->autotile_get_bitmask_mode(id) == TileSet::BITMASK_2X2) {
 				if (tile_set->is_tile_bound(id, get_cell(p_x - 1, p_y - 1)) && tile_set->is_tile_bound(id, get_cell(p_x, p_y - 1)) && tile_set->is_tile_bound(id, get_cell(p_x - 1, p_y))) {
@@ -978,8 +999,8 @@ void TileMap::_set_tile_data(const PoolVector<int> &p_data) {
 		bool flip_v = v & (1 << 30);
 		bool transpose = v & (1 << 31);
 		v &= (1 << 29) - 1;
-		int16_t coord_x;
-		int16_t coord_y;
+		int16_t coord_x = 0;
+		int16_t coord_y = 0;
 		if (format == FORMAT_2) {
 			coord_x = decode_uint16(&local[8]);
 			coord_y = decode_uint16(&local[10]);
@@ -1291,10 +1312,10 @@ bool TileMap::_get(const StringName &p_name, Variant &r_ret) const {
 
 void TileMap::_get_property_list(List<PropertyInfo> *p_list) const {
 
-	PropertyInfo p(Variant::INT, "format", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR);
+	PropertyInfo p(Variant::INT, "format", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL);
 	p_list->push_back(p);
 
-	p = PropertyInfo(Variant::OBJECT, "tile_data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR);
+	p = PropertyInfo(Variant::OBJECT, "tile_data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL);
 	p_list->push_back(p);
 }
 
@@ -1506,6 +1527,9 @@ void TileMap::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_clear_quadrants"), &TileMap::_clear_quadrants);
 	ClassDB::bind_method(D_METHOD("_recreate_quadrants"), &TileMap::_recreate_quadrants);
 	ClassDB::bind_method(D_METHOD("_update_dirty_quadrants"), &TileMap::_update_dirty_quadrants);
+
+	ClassDB::bind_method(D_METHOD("update_bitmask_area", "position"), &TileMap::update_bitmask_area);
+	ClassDB::bind_method(D_METHOD("update_bitmask_region", "start", "end"), &TileMap::update_bitmask_region, DEFVAL(Vector2()), DEFVAL(Vector2()));
 
 	ClassDB::bind_method(D_METHOD("_set_tile_data"), &TileMap::_set_tile_data);
 	ClassDB::bind_method(D_METHOD("_get_tile_data"), &TileMap::_get_tile_data);

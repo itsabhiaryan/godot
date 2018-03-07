@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "material.h"
 
 #include "scene/scene_string_names.h"
@@ -102,24 +103,18 @@ Material::~Material() {
 
 bool ShaderMaterial::_set(const StringName &p_name, const Variant &p_value) {
 
-	if (p_name == SceneStringNames::get_singleton()->shader) {
-		set_shader(p_value);
-		return true;
-	} else {
+	if (shader.is_valid()) {
 
-		if (shader.is_valid()) {
-
-			StringName pr = shader->remap_param(p_name);
-			if (!pr) {
-				String n = p_name;
-				if (n.find("param/") == 0) { //backwards compatibility
-					pr = n.substr(6, n.length());
-				}
+		StringName pr = shader->remap_param(p_name);
+		if (!pr) {
+			String n = p_name;
+			if (n.find("param/") == 0) { //backwards compatibility
+				pr = n.substr(6, n.length());
 			}
-			if (pr) {
-				VisualServer::get_singleton()->material_set_param(_get_material(), pr, p_value);
-				return true;
-			}
+		}
+		if (pr) {
+			VisualServer::get_singleton()->material_set_param(_get_material(), pr, p_value);
+			return true;
 		}
 	}
 
@@ -128,20 +123,12 @@ bool ShaderMaterial::_set(const StringName &p_name, const Variant &p_value) {
 
 bool ShaderMaterial::_get(const StringName &p_name, Variant &r_ret) const {
 
-	if (p_name == SceneStringNames::get_singleton()->shader) {
+	if (shader.is_valid()) {
 
-		r_ret = get_shader();
-		return true;
-
-	} else {
-
-		if (shader.is_valid()) {
-
-			StringName pr = shader->remap_param(p_name);
-			if (pr) {
-				r_ret = VisualServer::get_singleton()->material_get_param(_get_material(), pr);
-				return true;
-			}
+		StringName pr = shader->remap_param(p_name);
+		if (pr) {
+			r_ret = VisualServer::get_singleton()->material_get_param(_get_material(), pr);
+			return true;
 		}
 	}
 
@@ -149,8 +136,6 @@ bool ShaderMaterial::_get(const StringName &p_name, Variant &r_ret) const {
 }
 
 void ShaderMaterial::_get_property_list(List<PropertyInfo> *p_list) const {
-
-	p_list->push_back(PropertyInfo(Variant::OBJECT, "shader", PROPERTY_HINT_RESOURCE_TYPE, "Shader,ShaderGraph"));
 
 	if (!shader.is_null()) {
 
@@ -192,6 +177,8 @@ void ShaderMaterial::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_shader"), &ShaderMaterial::get_shader);
 	ClassDB::bind_method(D_METHOD("set_shader_param", "param", "value"), &ShaderMaterial::set_shader_param);
 	ClassDB::bind_method(D_METHOD("get_shader_param", "param"), &ShaderMaterial::get_shader_param);
+
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "shader", PROPERTY_HINT_RESOURCE_TYPE, "Shader"), "set_shader", "get_shader");
 }
 
 void ShaderMaterial::get_argument_options(const StringName &p_function, int p_idx, List<String> *r_options) const {
@@ -750,15 +737,18 @@ void SpatialMaterial::_update_shader() {
 		}
 	}
 
-	if (features[FEATURE_REFRACTION] && !flags[FLAG_UV1_USE_TRIPLANAR]) { //refraction not supported with triplanar
+	if (features[FEATURE_REFRACTION]) {
 
 		if (features[FEATURE_NORMAL_MAPPING]) {
-			code += "\tvec3 ref_normal = normalize( mix(NORMAL,TANGENT * NORMALMAP.x + BINORMAL * NORMALMAP.y + NORMAL * NORMALMAP.z,NORMALMAP_DEPTH) ) * SIDE;\n";
+			code += "\tvec3 ref_normal = normalize( mix(NORMAL,TANGENT * NORMALMAP.x + BINORMAL * NORMALMAP.y + NORMAL * NORMALMAP.z,NORMALMAP_DEPTH) );\n";
 		} else {
 			code += "\tvec3 ref_normal = NORMAL;\n";
 		}
-
-		code += "\tvec2 ref_ofs = SCREEN_UV - ref_normal.xy * dot(texture(texture_refraction,base_uv),refraction_texture_channel) * refraction;\n";
+		if (flags[FLAG_UV1_USE_TRIPLANAR]) {
+			code += "\tvec2 ref_ofs = SCREEN_UV - ref_normal.xy * dot(triplanar_texture(texture_refraction,uv1_power_normal,uv1_triplanar_pos),refraction_texture_channel) * refraction;\n";
+		} else {
+			code += "\tvec2 ref_ofs = SCREEN_UV - ref_normal.xy * dot(texture(texture_refraction,base_uv),refraction_texture_channel) * refraction;\n";
+		}
 		code += "\tfloat ref_amount = 1.0 - albedo.a * albedo_tex.a;\n";
 		code += "\tEMISSION += textureLod(SCREEN_TEXTURE,ref_ofs,ROUGHNESS * 8.0).rgb * ref_amount;\n";
 		code += "\tALBEDO *= 1.0 - ref_amount;\n";
@@ -1492,9 +1482,9 @@ bool SpatialMaterial::is_grow_enabled() const {
 	return grow_enabled;
 }
 
-void SpatialMaterial::set_alpha_scissor_threshold(float p_treshold) {
-	alpha_scissor_threshold = p_treshold;
-	VS::get_singleton()->material_set_param(_get_material(), shader_names->alpha_scissor_threshold, p_treshold);
+void SpatialMaterial::set_alpha_scissor_threshold(float p_threshold) {
+	alpha_scissor_threshold = p_threshold;
+	VS::get_singleton()->material_set_param(_get_material(), shader_names->alpha_scissor_threshold, p_threshold);
 }
 
 float SpatialMaterial::get_alpha_scissor_threshold() const {
@@ -2140,7 +2130,7 @@ SpatialMaterial::SpatialMaterial() :
 	for (int i = 0; i < FLAG_MAX; i++) {
 		flags[i] = 0;
 	}
-	diffuse_mode = DIFFUSE_LAMBERT;
+	diffuse_mode = DIFFUSE_BURLEY;
 	specular_mode = SPECULAR_SCHLICK_GGX;
 
 	for (int i = 0; i < FEATURE_MAX; i++) {

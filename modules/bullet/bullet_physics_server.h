@@ -1,13 +1,12 @@
 /*************************************************************************/
 /*  bullet_physics_server.h                                              */
-/*  Author: AndreaCatania                                                */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -40,6 +39,10 @@
 #include "shape_bullet.h"
 #include "soft_body_bullet.h"
 #include "space_bullet.h"
+
+/**
+	@author AndreaCatania
+*/
 
 class BulletPhysicsServer : public PhysicsServer {
 	GDCLASS(BulletPhysicsServer, PhysicsServer)
@@ -151,7 +154,7 @@ public:
 	/// AREA_PARAM_GRAVITY_VECTOR
 	/// Otherwise you can set area parameters
 	virtual void area_set_param(RID p_area, AreaParameter p_param, const Variant &p_value);
-	virtual Variant area_get_param(RID p_parea, AreaParameter p_param) const;
+	virtual Variant area_get_param(RID p_area, AreaParameter p_param) const;
 
 	virtual void area_set_transform(RID p_area, const Transform &p_transform);
 	virtual Transform area_get_transform(RID p_area) const;
@@ -236,7 +239,7 @@ public:
 	virtual void body_set_max_contacts_reported(RID p_body, int p_contacts);
 	virtual int body_get_max_contacts_reported(RID p_body) const;
 
-	virtual void body_set_contacts_reported_depth_threshold(RID p_body, float p_treshold);
+	virtual void body_set_contacts_reported_depth_threshold(RID p_body, float p_threshold);
 	virtual float body_get_contacts_reported_depth_threshold(RID p_body) const;
 
 	virtual void body_set_omit_force_integration(RID p_body, bool p_omit);
@@ -250,7 +253,7 @@ public:
 	// this function only works on physics process, errors and returns null otherwise
 	virtual PhysicsDirectBodyState *body_get_direct_state(RID p_body);
 
-	virtual bool body_test_motion(RID p_body, const Transform &p_from, const Vector3 &p_motion, MotionResult *r_result = NULL);
+	virtual bool body_test_motion(RID p_body, const Transform &p_from, const Vector3 &p_motion, bool p_infinite_inertia, MotionResult *r_result = NULL);
 
 	/* SOFT BODY API */
 
@@ -287,6 +290,9 @@ public:
 	virtual void joint_set_solver_priority(RID p_joint, int p_priority);
 	virtual int joint_get_solver_priority(RID p_joint) const;
 
+	virtual void joint_disable_collisions_between_bodies(RID p_joint, const bool p_disable);
+	virtual bool joint_is_disabled_collisions_between_bodies(RID p_joint) const;
+
 	virtual RID joint_create_pin(RID p_body_A, const Vector3 &p_local_A, RID p_body_B, const Vector3 &p_local_B);
 
 	virtual void pin_joint_set_param(RID p_joint, PinJointParam p_param, float p_value);
@@ -298,7 +304,7 @@ public:
 	virtual void pin_joint_set_local_b(RID p_joint, const Vector3 &p_B);
 	virtual Vector3 pin_joint_get_local_b(RID p_joint) const;
 
-	virtual RID joint_create_hinge(RID p_body_A, const Transform &p_frame_A, RID p_body_B, const Transform &p_frame_B);
+	virtual RID joint_create_hinge(RID p_body_A, const Transform &p_hinge_A, RID p_body_B, const Transform &p_hinge_B);
 	virtual RID joint_create_hinge_simple(RID p_body_A, const Vector3 &p_pivot_A, const Vector3 &p_axis_A, RID p_body_B, const Vector3 &p_pivot_B, const Vector3 &p_axis_B);
 
 	virtual void hinge_joint_set_param(RID p_joint, HingeJointParam p_param, float p_value);

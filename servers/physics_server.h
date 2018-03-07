@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef PHYSICS_SERVER_H
 #define PHYSICS_SERVER_H
 
@@ -62,7 +63,9 @@ public:
 	virtual void set_transform(const Transform &p_transform) = 0;
 	virtual Transform get_transform() const = 0;
 
+	virtual void add_central_force(const Vector3 &p_force) = 0;
 	virtual void add_force(const Vector3 &p_force, const Vector3 &p_pos) = 0;
+	virtual void add_torque(const Vector3 &p_torque) = 0;
 	virtual void apply_impulse(const Vector3 &p_pos, const Vector3 &p_j) = 0;
 	virtual void apply_torque_impulse(const Vector3 &p_j) = 0;
 
@@ -117,7 +120,7 @@ public:
 	void set_margin(float p_margin);
 	float get_margin() const;
 
-	void set_collision_mask(int p_collision_layer);
+	void set_collision_mask(int p_collision_mask);
 	int get_collision_mask() const;
 
 	void set_exclude(const Vector<RID> &p_exclude);
@@ -471,7 +474,7 @@ public:
 		Variant collider_metadata;
 	};
 
-	virtual bool body_test_motion(RID p_body, const Transform &p_from, const Vector3 &p_motion, MotionResult *r_result = NULL) = 0;
+	virtual bool body_test_motion(RID p_body, const Transform &p_from, const Vector3 &p_motion, bool p_infinite_inertia, MotionResult *r_result = NULL) = 0;
 
 	/* JOINT API */
 
@@ -489,6 +492,9 @@ public:
 
 	virtual void joint_set_solver_priority(RID p_joint, int p_priority) = 0;
 	virtual int joint_get_solver_priority(RID p_joint) const = 0;
+
+	virtual void joint_disable_collisions_between_bodies(RID p_joint, const bool p_disable) = 0;
+	virtual bool joint_is_disabled_collisions_between_bodies(RID p_joint) const = 0;
 
 	virtual RID joint_create_pin(RID p_body_A, const Vector3 &p_local_A, RID p_body_B, const Vector3 &p_local_B) = 0;
 

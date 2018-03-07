@@ -1,13 +1,12 @@
 /*************************************************************************/
 /*  godot_result_callbacks.cpp                                           */
-/*  Author: AndreaCatania                                                */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -30,9 +29,14 @@
 /*************************************************************************/
 
 #include "godot_result_callbacks.h"
+
 #include "bullet_types_converter.h"
 #include "collision_object_bullet.h"
 #include "rigid_body_bullet.h"
+
+/**
+	@author AndreaCatania
+*/
 
 bool GodotFilterCallback::test_collision_filters(uint32_t body0_collision_layer, uint32_t body0_collision_mask, uint32_t body1_collision_layer, uint32_t body1_collision_mask) {
 	return body0_collision_layer & body1_collision_mask || body1_collision_layer & body0_collision_mask;
@@ -94,11 +98,16 @@ bool GodotKinClosestConvexResultCallback::needsCollision(btBroadphaseProxy *prox
 		if (gObj == m_self_object) {
 			return false;
 		} else {
-			if (m_ignore_areas && gObj->getType() == CollisionObjectBullet::TYPE_AREA) {
+
+			// A kinematic body can't be stopped by a rigid body since the mass of kinematic body is infinite
+			if (m_infinite_inertia && !btObj->isStaticOrKinematicObject())
 				return false;
-			} else if (m_self_object->has_collision_exception(gObj)) {
+
+			if (gObj->getType() == CollisionObjectBullet::TYPE_AREA)
 				return false;
-			}
+
+			if (m_self_object->has_collision_exception(gObj))
+				return false;
 		}
 		return true;
 	} else {
@@ -142,6 +151,9 @@ bool GodotAllContactResultCallback::needsCollision(btBroadphaseProxy *proxy0) co
 
 btScalar GodotAllContactResultCallback::addSingleResult(btManifoldPoint &cp, const btCollisionObjectWrapper *colObj0Wrap, int partId0, int index0, const btCollisionObjectWrapper *colObj1Wrap, int partId1, int index1) {
 
+	if (m_count >= m_resultMax)
+		return cp.getDistance();
+
 	if (cp.getDistance() <= 0) {
 
 		PhysicsDirectSpaceState::ShapeResult &result = m_results[m_count];
@@ -165,7 +177,7 @@ btScalar GodotAllContactResultCallback::addSingleResult(btManifoldPoint &cp, con
 		++m_count;
 	}
 
-	return m_count < m_resultMax;
+	return cp.getDistance();
 }
 
 bool GodotContactPairContactResultCallback::needsCollision(btBroadphaseProxy *proxy0) const {
@@ -245,18 +257,15 @@ btScalar GodotRestInfoContactResultCallback::addSingleResult(btManifoldPoint &cp
 
 void GodotDeepPenetrationContactResultCallback::addContactPoint(const btVector3 &normalOnBInWorld, const btVector3 &pointInWorldOnB, btScalar depth) {
 
-	if (depth < 0) {
-		// Has penetration
-		if (m_most_penetrated_distance > depth) {
+	// Has penetration
+	if (m_penetration_distance < ABS(depth)) {
 
-			bool isSwapped = m_manifoldPtr->getBody0() != m_body0Wrap->getCollisionObject();
+		bool isSwapped = m_manifoldPtr->getBody0() != m_body0Wrap->getCollisionObject();
 
-			m_most_penetrated_distance = depth;
-			m_pointCollisionObject = (isSwapped ? m_body0Wrap : m_body1Wrap)->getCollisionObject();
-			m_other_compound_shape_index = isSwapped ? m_index1 : m_index0;
-			m_pointNormalWorld = isSwapped ? normalOnBInWorld * -1 : normalOnBInWorld;
-			m_pointWorld = isSwapped ? (pointInWorldOnB + normalOnBInWorld * depth) : pointInWorldOnB;
-			m_penetration_distance = depth;
-		}
+		m_penetration_distance = depth;
+		m_pointCollisionObject = (isSwapped ? m_body0Wrap : m_body1Wrap)->getCollisionObject();
+		m_other_compound_shape_index = isSwapped ? m_index1 : m_index0;
+		m_pointNormalWorld = isSwapped ? normalOnBInWorld * -1 : normalOnBInWorld;
+		m_pointWorld = isSwapped ? (pointInWorldOnB + normalOnBInWorld * depth) : pointInWorldOnB;
 	}
 }

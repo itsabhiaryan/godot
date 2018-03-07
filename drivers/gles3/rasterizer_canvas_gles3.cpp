@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "rasterizer_canvas_gles3.h"
 #include "os/os.h"
 #include "project_settings.h"
@@ -449,6 +450,16 @@ void RasterizerCanvasGLES3::_draw_gui_primitive(int p_points, const Vector2 *p_v
 	storage->frame.canvas_draw_commands++;
 }
 
+static const GLenum gl_primitive[] = {
+	GL_POINTS,
+	GL_LINES,
+	GL_LINE_STRIP,
+	GL_LINE_LOOP,
+	GL_TRIANGLES,
+	GL_TRIANGLE_STRIP,
+	GL_TRIANGLE_FAN
+};
+
 void RasterizerCanvasGLES3::_canvas_item_render_commands(Item *p_item, Item *current_clip, bool &reclip) {
 
 	int cc = p_item->commands.size();
@@ -734,6 +745,36 @@ void RasterizerCanvasGLES3::_canvas_item_render_commands(Item *p_item, Item *cur
 #endif
 
 			} break;
+			case Item::Command::TYPE_MESH: {
+
+				Item::CommandMesh *mesh = static_cast<Item::CommandMesh *>(c);
+				_set_texture_rect_mode(false);
+
+				RasterizerStorageGLES3::Texture *texture = _bind_canvas_texture(mesh->texture, mesh->normal_map);
+
+				if (texture) {
+					Size2 texpixel_size(1.0 / texture->width, 1.0 / texture->height);
+					state.canvas_shader.set_uniform(CanvasShaderGLES3::COLOR_TEXPIXEL_SIZE, texpixel_size);
+				}
+
+				RasterizerStorageGLES3::Mesh *mesh_data = storage->mesh_owner.getornull(mesh->mesh);
+				if (mesh_data) {
+
+					for (int j = 0; j < mesh_data->surfaces.size(); j++) {
+						RasterizerStorageGLES3::Surface *s = mesh_data->surfaces[j];
+						// materials are ignored in 2D meshes, could be added but many things (ie, lighting mode, reading from screen, etc) would break as they are not meant be set up at this point of drawing
+						glBindVertexArray(s->array_id);
+
+						if (s->index_array_len) {
+							glDrawElements(gl_primitive[s->primitive], s->index_array_len, (s->array_len >= (1 << 16)) ? GL_UNSIGNED_INT : GL_UNSIGNED_SHORT, 0);
+						} else {
+							glDrawArrays(gl_primitive[s->primitive], 0, s->array_len);
+						}
+
+						glBindVertexArray(0);
+					}
+				}
+			} break;
 			case Item::Command::TYPE_PARTICLES: {
 
 				Item::CommandParticles *particles_cmd = static_cast<Item::CommandParticles *>(c);
@@ -992,18 +1033,16 @@ void RasterizerCanvasGLES3::_copy_texscreen(const Rect2 &p_rect) {
 	glBindFramebuffer(GL_FRAMEBUFFER, storage->frame.current_rt->fbo); //back to front
 	glViewport(0, 0, storage->frame.current_rt->width, storage->frame.current_rt->height);
 
-	state.canvas_shader.bind(); //back to canvas
-	_bind_canvas_texture(state.current_tex, state.current_normal);
+	// back to canvas, force rebind
+	state.using_texture_rect = true;
+	_set_texture_rect_mode(false);
 
-	if (state.using_texture_rect) {
-		state.using_texture_rect = false;
-		_set_texture_rect_mode(state.using_texture_rect, state.using_ninepatch);
-	}
+	_bind_canvas_texture(state.current_tex, state.current_normal);
 
 	glEnable(GL_BLEND);
 }
 
-void RasterizerCanvasGLES3::canvas_render_items(Item *p_item_list, int p_z, const Color &p_modulate, Light *p_light) {
+void RasterizerCanvasGLES3::canvas_render_items(Item *p_item_list, int p_z, const Color &p_modulate, Light *p_light, const Transform2D &p_transform) {
 
 	Item *current_clip = NULL;
 	RasterizerStorageGLES3::Shader *shader_cache = NULL;
@@ -1086,19 +1125,22 @@ void RasterizerCanvasGLES3::canvas_render_items(Item *p_item_list, int p_z, cons
 				}
 			}
 
-			if (shader_ptr && shader_ptr != shader_cache) {
+			if (shader_ptr) {
 
 				if (shader_ptr->canvas_item.uses_screen_texture && !state.canvas_texscreen_used) {
 					//copy if not copied before
 					_copy_texscreen(Rect2());
 				}
 
-				if (shader_ptr->canvas_item.uses_time) {
-					VisualServerRaster::redraw_request();
-				}
+				if (shader_ptr != shader_cache) {
 
-				state.canvas_shader.set_custom_shader(shader_ptr->custom_code_id);
-				state.canvas_shader.bind();
+					if (shader_ptr->canvas_item.uses_time) {
+						VisualServerRaster::redraw_request();
+					}
+
+					state.canvas_shader.set_custom_shader(shader_ptr->custom_code_id);
+					state.canvas_shader.bind();
+				}
 
 				if (material_ptr->ubo_id) {
 					glBindBufferBase(GL_UNIFORM_BUFFER, 2, material_ptr->ubo_id);
@@ -1147,7 +1189,7 @@ void RasterizerCanvasGLES3::canvas_render_items(Item *p_item_list, int p_z, cons
 					glBindTexture(t->target, t->tex_id);
 				}
 
-			} else if (!shader_ptr) {
+			} else {
 				state.canvas_shader.set_custom_shader(0);
 				state.canvas_shader.bind();
 			}
@@ -1171,28 +1213,46 @@ void RasterizerCanvasGLES3::canvas_render_items(Item *p_item_list, int p_z, cons
 					if (storage->frame.current_rt && storage->frame.current_rt->flags[RasterizerStorage::RENDER_TARGET_TRANSPARENT]) {
 						glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 					} else {
-						glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+						glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
 					}
 
 				} break;
 				case RasterizerStorageGLES3::Shader::CanvasItem::BLEND_MODE_ADD: {
 
 					glBlendEquation(GL_FUNC_ADD);
-					glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+					if (storage->frame.current_rt && storage->frame.current_rt->flags[RasterizerStorage::RENDER_TARGET_TRANSPARENT]) {
+						glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_SRC_ALPHA, GL_ONE);
+					} else {
+						glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_ONE);
+					}
 
 				} break;
 				case RasterizerStorageGLES3::Shader::CanvasItem::BLEND_MODE_SUB: {
 
 					glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
-					glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+					if (storage->frame.current_rt && storage->frame.current_rt->flags[RasterizerStorage::RENDER_TARGET_TRANSPARENT]) {
+						glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_SRC_ALPHA, GL_ONE);
+					} else {
+						glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_ONE);
+					}
 				} break;
 				case RasterizerStorageGLES3::Shader::CanvasItem::BLEND_MODE_MUL: {
 					glBlendEquation(GL_FUNC_ADD);
-					glBlendFunc(GL_DST_COLOR, GL_ZERO);
+					if (storage->frame.current_rt && storage->frame.current_rt->flags[RasterizerStorage::RENDER_TARGET_TRANSPARENT]) {
+						glBlendFuncSeparate(GL_DST_COLOR, GL_ZERO, GL_DST_ALPHA, GL_ZERO);
+					} else {
+						glBlendFuncSeparate(GL_DST_COLOR, GL_ZERO, GL_ZERO, GL_ONE);
+					}
+
 				} break;
 				case RasterizerStorageGLES3::Shader::CanvasItem::BLEND_MODE_PMALPHA: {
 					glBlendEquation(GL_FUNC_ADD);
-					glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+					if (storage->frame.current_rt && storage->frame.current_rt->flags[RasterizerStorage::RENDER_TARGET_TRANSPARENT]) {
+						glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+					} else {
+						glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
+					}
+
 				} break;
 			}
 
@@ -1545,7 +1605,7 @@ void RasterizerCanvasGLES3::reset_canvas() {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	//use for reading from screen
-	if (storage->frame.current_rt) {
+	if (storage->frame.current_rt && !storage->frame.current_rt->flags[RasterizerStorage::RENDER_TARGET_NO_SAMPLING]) {
 		glActiveTexture(GL_TEXTURE0 + storage->config.max_texture_image_units - 3);
 		glBindTexture(GL_TEXTURE_2D, storage->frame.current_rt->effects.mip_maps[0].color);
 	}
@@ -1784,6 +1844,8 @@ void RasterizerCanvasGLES3::initialize() {
 
 	state.canvas_shader.set_conditional(CanvasShaderGLES3::USE_RGBA_SHADOWS, storage->config.use_rgba_2d_shadows);
 	state.canvas_shadow_shader.set_conditional(CanvasShadowShaderGLES3::USE_RGBA_SHADOWS, storage->config.use_rgba_2d_shadows);
+
+	state.canvas_shader.set_conditional(CanvasShaderGLES3::USE_PIXEL_SNAP, GLOBAL_DEF("rendering/quality/2d/use_pixel_snap", false));
 }
 
 void RasterizerCanvasGLES3::finalize() {

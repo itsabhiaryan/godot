@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "space_2d_sw.h"
 
 #include "collision_solver_2d_sw.h"
@@ -482,7 +483,7 @@ int Space2DSW::_cull_aabb_for_body(Body2DSW *p_body, const Rect2 &p_aabb) {
 	return amount;
 }
 
-bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, const Vector2 &p_motion, real_t p_margin, Physics2DServer::MotionResult *r_result) {
+bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, const Vector2 &p_motion, bool p_infinite_inertia, real_t p_margin, Physics2DServer::MotionResult *r_result) {
 
 	//give me back regular physics engine logic
 	//this is madness
@@ -548,6 +549,13 @@ bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, co
 
 					const CollisionObject2DSW *col_obj = intersection_query_results[i];
 					int shape_idx = intersection_query_subindex_results[i];
+
+					if (CollisionObject2DSW::TYPE_BODY == col_obj->get_type()) {
+						const Body2DSW *b = static_cast<const Body2DSW *>(col_obj);
+						if (p_infinite_inertia && Physics2DServer::BODY_MODE_STATIC != b->get_mode() && Physics2DServer::BODY_MODE_KINEMATIC != b->get_mode()) {
+							continue;
+						}
+					}
 
 					if (col_obj->is_shape_set_as_one_way_collision(shape_idx)) {
 
@@ -636,6 +644,13 @@ bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, co
 				const CollisionObject2DSW *col_obj = intersection_query_results[i];
 				int col_shape_idx = intersection_query_subindex_results[i];
 				Shape2DSW *against_shape = col_obj->get_shape(col_shape_idx);
+
+				if (CollisionObject2DSW::TYPE_BODY == col_obj->get_type()) {
+					const Body2DSW *b = static_cast<const Body2DSW *>(col_obj);
+					if (p_infinite_inertia && Physics2DServer::BODY_MODE_STATIC != b->get_mode() && Physics2DServer::BODY_MODE_KINEMATIC != b->get_mode()) {
+						continue;
+					}
+				}
 
 				bool excluded = false;
 
@@ -766,6 +781,13 @@ bool Space2DSW::test_body_motion(Body2DSW *p_body, const Transform2D &p_from, co
 
 			const CollisionObject2DSW *col_obj = intersection_query_results[i];
 			int shape_idx = intersection_query_subindex_results[i];
+
+			if (CollisionObject2DSW::TYPE_BODY == col_obj->get_type()) {
+				const Body2DSW *b = static_cast<const Body2DSW *>(col_obj);
+				if (p_infinite_inertia && Physics2DServer::BODY_MODE_STATIC != b->get_mode() && Physics2DServer::BODY_MODE_KINEMATIC != b->get_mode()) {
+					continue;
+				}
+			}
 
 			Shape2DSW *against_shape = col_obj->get_shape(shape_idx);
 

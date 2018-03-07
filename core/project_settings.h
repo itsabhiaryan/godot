@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef GLOBAL_CONFIG_H
 #define GLOBAL_CONFIG_H
 
@@ -57,19 +58,19 @@ protected:
 		Variant variant;
 		Variant initial;
 		bool hide_from_editor;
-		bool overrided;
+		bool overridden;
 		VariantContainer() :
 				order(0),
 				persist(false),
 				hide_from_editor(false),
-				overrided(false) {
+				overridden(false) {
 		}
 		VariantContainer(const Variant &p_variant, int p_order, bool p_persist = false) :
 				order(p_order),
 				persist(p_persist),
 				variant(p_variant),
 				hide_from_editor(false),
-				overrided(false) {
+				overridden(false) {
 		}
 	};
 
@@ -92,8 +93,9 @@ protected:
 
 	static ProjectSettings *singleton;
 
-	Error _load_settings(const String p_path);
+	Error _load_settings_text(const String p_path);
 	Error _load_settings_binary(const String p_path);
+	Error _load_settings_text_or_binary(const String p_text_path, const String p_bin_path);
 
 	Error _save_settings_text(const String &p_file, const Map<String, List<String> > &props, const CustomMap &p_custom = CustomMap(), const String &p_custom_features = String());
 	Error _save_settings_binary(const String &p_file, const Map<String, List<String> > &props, const CustomMap &p_custom = CustomMap(), const String &p_custom_features = String());

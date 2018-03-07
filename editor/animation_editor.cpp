@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "animation_editor.h"
 
 #include "editor/plugins/animation_player_editor_plugin.h"
@@ -1156,7 +1157,7 @@ void AnimationKeyEditor::_track_editor_draw() {
 	Ref<Texture> type_hover = get_icon("KeyHover", "EditorIcons");
 	Ref<Texture> type_selected = get_icon("KeySelected", "EditorIcons");
 
-	int right_separator_ofs = down_icon->get_width() * 3 + add_key_icon->get_width() + interp_icon[0]->get_width() + wrap_icon[0]->get_width() + cont_icon[0]->get_width() + hsep * 9;
+	int right_separator_ofs = right_data_size_cache;
 
 	int h = font->get_height() + sep;
 
@@ -1358,7 +1359,7 @@ void AnimationKeyEditor::_track_editor_draw() {
 		Color ncol = color;
 		if (n && editor_selection->is_selected(n))
 			ncol = track_select_color;
-		te->draw_string(font, Point2(ofs + Point2(left_check_ofs + sep + type_icon[0]->get_width() + sep, y + font->get_ascent() + (sep / 2))).floor(), np, ncol, name_limit - (type_icon[0]->get_width() + sep) - 5);
+		te->draw_string(font, Point2(ofs + Point2(left_check_ofs + sep + type_icon[0]->get_width() + sep, y + font->get_ascent() + (sep / 2))).floor(), np, ncol, name_limit - (left_check_ofs + sep) - (type_icon[0]->get_width() + sep) - 5);
 
 		// Draw separator line below track area
 		if (!obj)
@@ -1533,7 +1534,7 @@ void AnimationKeyEditor::_track_editor_draw() {
 			for (Map<SelectedKey, KeyInfo>::Element *E = selection.front(); E; E = E->next()) {
 
 				int idx = E->key().track;
-				int i = idx - v_scroll->get_value();
+				int i = idx - (int)v_scroll->get_value();
 				if (i < 0 || i >= fit)
 					continue;
 				int y = h + i * h + sep;
@@ -1829,7 +1830,7 @@ void AnimationKeyEditor::_track_editor_gui_input(const Ref<InputEvent> &p_input)
 		get_icon("KeyXform", "EditorIcons"),
 		get_icon("KeyCall", "EditorIcons")
 	};
-	int right_separator_ofs = down_icon->get_width() * 3 + add_key_icon->get_width() + interp_icon[0]->get_width() + wrap_icon[0]->get_width() + cont_icon[0]->get_width() + hsep * 9;
+	int right_separator_ofs = right_data_size_cache;
 
 	int h = font->get_height() + sep;
 
@@ -3041,7 +3042,7 @@ void AnimationKeyEditor::_notification(int p_what) {
 					get_icon("InterpWrapClamp", "EditorIcons"),
 					get_icon("InterpWrapLoop", "EditorIcons"),
 				};
-				right_data_size_cache = down_icon->get_width() * 3 + add_key_icon->get_width() + interp_icon[0]->get_width() + cont_icon[0]->get_width() + wrap_icon[0]->get_width() + hsep * 8;
+				right_data_size_cache = down_icon->get_width() * 3 + add_key_icon->get_width() + interp_icon[0]->get_width() + cont_icon[0]->get_width() + wrap_icon[0]->get_width() + hsep * 9;
 			}
 		} break;
 	}
@@ -3118,12 +3119,12 @@ void AnimationKeyEditor::set_animation(const Ref<Animation> &p_anim) {
 void AnimationKeyEditor::set_root(Node *p_root) {
 
 	if (root)
-		root->disconnect("tree_exited", this, "_root_removed");
+		root->disconnect("tree_exiting", this, "_root_removed");
 
 	root = p_root;
 
 	if (root)
-		root->connect("tree_exited", this, "_root_removed", make_binds(), CONNECT_ONESHOT);
+		root->connect("tree_exiting", this, "_root_removed", make_binds(), CONNECT_ONESHOT);
 }
 
 Node *AnimationKeyEditor::get_root() const {
@@ -3361,7 +3362,7 @@ int AnimationKeyEditor::_confirm_insert(InsertData p_id, int p_last_track) {
 			//wants a new tack
 
 			{
-				//shitty hack
+				//hack
 				NodePath np;
 				animation->add_track(p_id.type);
 				animation->track_set_path(animation->get_track_count() - 1, p_id.path);

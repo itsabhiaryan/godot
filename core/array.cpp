@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "array.h"
 
 #include "hashfuncs.h"
@@ -263,6 +264,20 @@ Array &Array::sort_custom(Object *p_obj, const StringName &p_function) {
 	avs.compare.func = p_function;
 	avs.sort(_p->array.ptrw(), _p->array.size());
 	return *this;
+}
+
+void Array::shuffle() {
+
+	const int n = _p->array.size();
+	if (n < 2)
+		return;
+	Variant *data = _p->array.ptrw();
+	for (int i = n - 1; i >= 1; i--) {
+		const int j = Math::rand() % (i + 1);
+		const Variant tmp = data[j];
+		data[j] = data[i];
+		data[i] = tmp;
+	}
 }
 
 template <typename Less>

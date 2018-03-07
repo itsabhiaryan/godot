@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -30,23 +30,24 @@
 
 #include "os_windows.h"
 
+#include "drivers/gles2/rasterizer_gles2.h"
 #include "drivers/gles3/rasterizer_gles3.h"
 #include "drivers/windows/dir_access_windows.h"
 #include "drivers/windows/file_access_windows.h"
 #include "drivers/windows/mutex_windows.h"
+#include "drivers/windows/packet_peer_udp_winsock.h"
 #include "drivers/windows/rw_lock_windows.h"
 #include "drivers/windows/semaphore_windows.h"
+#include "drivers/windows/stream_peer_tcp_winsock.h"
+#include "drivers/windows/tcp_server_winsock.h"
 #include "drivers/windows/thread_windows.h"
 #include "io/marshalls.h"
 #include "joypad.h"
 #include "lang_table.h"
 #include "main/main.h"
-#include "packet_peer_udp_winsock.h"
 #include "servers/audio_server.h"
 #include "servers/visual/visual_server_raster.h"
 #include "servers/visual/visual_server_wrap_mt.h"
-#include "stream_peer_winsock.h"
-#include "tcp_server_winsock.h"
 #include "version_generated.gen.h"
 #include "windows_terminal_logger.h"
 
@@ -151,26 +152,6 @@ void RedirectIOToConsole() {
 	// point to console as well
 }
 
-int OS_Windows::get_video_driver_count() const {
-
-	return 1;
-}
-const char *OS_Windows::get_video_driver_name(int p_driver) const {
-
-	return "GLES3";
-}
-
-int OS_Windows::get_audio_driver_count() const {
-
-	return AudioDriverManager::get_driver_count();
-}
-const char *OS_Windows::get_audio_driver_name(int p_driver) const {
-
-	AudioDriver *driver = AudioDriverManager::get_driver(p_driver);
-	ERR_FAIL_COND_V(!driver, "");
-	return AudioDriverManager::get_driver(p_driver)->get_name();
-}
-
 void OS_Windows::initialize_core() {
 
 	crash_handler.initialize();
@@ -196,7 +177,7 @@ void OS_Windows::initialize_core() {
 	DirAccess::make_default<DirAccessWindows>(DirAccess::ACCESS_FILESYSTEM);
 
 	TCPServerWinsock::make_default();
-	StreamPeerWinsock::make_default();
+	StreamPeerTCPWinsock::make_default();
 	PacketPeerUDPWinsock::make_default();
 
 	// We need to know how often the clock is updated
@@ -416,6 +397,7 @@ LRESULT OS_Windows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			/*mm->get_button_mask()|=(wParam&MK_XBUTTON1)?(1<<5):0;
 			mm->get_button_mask()|=(wParam&MK_XBUTTON2)?(1<<6):0;*/
 			mm->set_position(Vector2(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+			mm->set_global_position(Vector2(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
 
 			if (mouse_mode == MOUSE_MODE_CAPTURED) {
 
@@ -461,6 +443,7 @@ LRESULT OS_Windows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		case WM_MOUSEWHEEL:
 		case WM_MOUSEHWHEEL:
 		case WM_LBUTTONDBLCLK:
+		case WM_MBUTTONDBLCLK:
 		case WM_RBUTTONDBLCLK:
 			/*case WM_XBUTTONDOWN:
 		case WM_XBUTTONUP: */ {
@@ -517,6 +500,12 @@ LRESULT OS_Windows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
 						mb->set_pressed(true);
 						mb->set_button_index(2);
+						mb->set_doubleclick(true);
+					} break;
+					case WM_MBUTTONDBLCLK: {
+
+						mb->set_pressed(true);
+						mb->set_button_index(3);
 						mb->set_doubleclick(true);
 					} break;
 					case WM_MOUSEWHEEL: {
@@ -580,7 +569,7 @@ LRESULT OS_Windows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 					mb->set_position(Vector2(old_x, old_y));
 				}
 
-				if (uMsg != WM_MOUSEWHEEL) {
+				if (uMsg != WM_MOUSEWHEEL && uMsg != WM_MOUSEHWHEEL) {
 					if (mb->is_pressed()) {
 
 						if (++pressrc > 0)
@@ -624,7 +613,16 @@ LRESULT OS_Windows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 				video_mode.width = window_w;
 				video_mode.height = window_h;
 			}
-			//return 0;								// Jump Back
+			if (wParam == SIZE_MAXIMIZED) {
+				maximized = true;
+				minimized = false;
+			} else if (wParam == SIZE_MINIMIZED) {
+				maximized = false;
+				minimized = true;
+			} else if (wParam == SIZE_RESTORED) {
+				maximized = false;
+				minimized = false;
+			}
 		} break;
 
 		case WM_ENTERSIZEMOVE: {
@@ -929,7 +927,7 @@ typedef enum _SHC_PROCESS_DPI_AWARENESS {
 	SHC_PROCESS_PER_MONITOR_DPI_AWARE = 2
 } SHC_PROCESS_DPI_AWARENESS;
 
-void OS_Windows::initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver) {
+Error OS_Windows::initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver) {
 
 	main_loop = NULL;
 	outside = true;
@@ -975,7 +973,7 @@ void OS_Windows::initialize(const VideoMode &p_desired, int p_video_driver, int 
 
 	if (!RegisterClassExW(&wc)) {
 		MessageBox(NULL, "Failed To Register The Window Class.", "ERROR", MB_OK | MB_ICONEXCLAMATION);
-		return; // Return
+		return ERR_UNAVAILABLE;
 	}
 
 	pre_fs_valid = true;
@@ -1045,7 +1043,7 @@ void OS_Windows::initialize(const VideoMode &p_desired, int p_video_driver, int 
 		RECT rect;
 		if (!GetClientRect(hWnd, &rect)) {
 			MessageBoxW(NULL, L"Window Creation Error.", L"ERROR", MB_OK | MB_ICONEXCLAMATION);
-			return; // Return FALSE
+			return ERR_UNAVAILABLE;
 		};
 		video_mode.width = rect.right;
 		video_mode.height = rect.bottom;
@@ -1063,17 +1061,28 @@ void OS_Windows::initialize(const VideoMode &p_desired, int p_video_driver, int 
 				NULL, NULL, hInstance, NULL);
 		if (!hWnd) {
 			MessageBoxW(NULL, L"Window Creation Error.", L"ERROR", MB_OK | MB_ICONEXCLAMATION);
-			return; // Return FALSE
+			return ERR_UNAVAILABLE;
 		}
 	};
 
+	if (video_mode.always_on_top) {
+		SetWindowPos(hWnd, video_mode.always_on_top ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+	}
+
 #if defined(OPENGL_ENABLED)
-	gl_context = memnew(ContextGL_Win(hWnd, true));
-	gl_context->initialize();
+	if (p_video_driver == VIDEO_DRIVER_GLES2) {
+		gl_context = memnew(ContextGL_Win(hWnd, false));
+		gl_context->initialize();
 
-	RasterizerGLES3::register_config();
+		RasterizerGLES2::register_config();
+		RasterizerGLES2::make_current();
+	} else {
+		gl_context = memnew(ContextGL_Win(hWnd, true));
+		gl_context->initialize();
 
-	RasterizerGLES3::make_current();
+		RasterizerGLES3::register_config();
+		RasterizerGLES3::make_current();
+	}
 
 	gl_context->set_use_vsync(video_mode.use_vsync);
 #endif
@@ -1127,6 +1136,8 @@ void OS_Windows::initialize(const VideoMode &p_desired, int p_video_driver, int 
 		SetForegroundWindow(hWnd); // Slightly Higher Priority
 		SetFocus(hWnd); // Sets Keyboard Focus To
 	}
+
+	return OK;
 }
 
 void OS_Windows::set_clipboard(const String &p_text) {
@@ -1253,7 +1264,7 @@ void OS_Windows::finalize_core() {
 	memdelete(process_map);
 
 	TCPServerWinsock::cleanup();
-	StreamPeerWinsock::cleanup();
+	StreamPeerTCPWinsock::cleanup();
 }
 
 void OS_Windows::alert(const String &p_alert, const String &p_title) {
@@ -1477,6 +1488,12 @@ Size2 OS_Windows::get_window_size() const {
 	GetClientRect(hWnd, &r);
 	return Vector2(r.right - r.left, r.bottom - r.top);
 }
+Size2 OS_Windows::get_real_window_size() const {
+
+	RECT r;
+	GetWindowRect(hWnd, &r);
+	return Vector2(r.right - r.left, r.bottom - r.top);
+}
 void OS_Windows::set_window_size(const Size2 p_size) {
 
 	video_mode.width = p_size.width;
@@ -1598,6 +1615,19 @@ bool OS_Windows::is_window_maximized() const {
 	return maximized;
 }
 
+void OS_Windows::set_window_always_on_top(bool p_enabled) {
+	if (video_mode.always_on_top == p_enabled)
+		return;
+
+	video_mode.always_on_top = p_enabled;
+
+	_update_window_style();
+}
+
+bool OS_Windows::is_window_always_on_top() const {
+	return video_mode.always_on_top;
+}
+
 void OS_Windows::set_borderless_window(bool p_borderless) {
 	if (video_mode.borderless_window == p_borderless)
 		return;
@@ -1622,6 +1652,8 @@ void OS_Windows::_update_window_style(bool repaint) {
 		}
 	}
 
+	SetWindowPos(hWnd, video_mode.always_on_top ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
 	if (repaint) {
 		RECT rect;
 		GetWindowRect(hWnd, &rect);
@@ -1631,6 +1663,13 @@ void OS_Windows::_update_window_style(bool repaint) {
 
 Error OS_Windows::open_dynamic_library(const String p_path, void *&p_library_handle, bool p_also_set_library_path) {
 
+	String path = p_path;
+
+	if (!FileAccess::exists(path)) {
+		//this code exists so gdnative can load .dll files from within the executable path
+		path = get_executable_path().get_base_dir().plus_file(p_path.get_file());
+	}
+
 	typedef DLL_DIRECTORY_COOKIE(WINAPI * PAddDllDirectory)(PCWSTR);
 	typedef BOOL(WINAPI * PRemoveDllDirectory)(DLL_DIRECTORY_COOKIE);
 
@@ -1638,15 +1677,15 @@ Error OS_Windows::open_dynamic_library(const String p_path, void *&p_library_han
 	PRemoveDllDirectory remove_dll_directory = (PRemoveDllDirectory)GetProcAddress(GetModuleHandle("kernel32.dll"), "RemoveDllDirectory");
 
 	bool has_dll_directory_api = ((add_dll_directory != NULL) && (remove_dll_directory != NULL));
-	DLL_DIRECTORY_COOKIE cookie;
+	DLL_DIRECTORY_COOKIE cookie = NULL;
 
 	if (p_also_set_library_path && has_dll_directory_api) {
-		cookie = add_dll_directory(p_path.get_base_dir().c_str());
+		cookie = add_dll_directory(path.get_base_dir().c_str());
 	}
 
-	p_library_handle = (void *)LoadLibraryExW(p_path.c_str(), NULL, (p_also_set_library_path && has_dll_directory_api) ? LOAD_LIBRARY_SEARCH_DEFAULT_DIRS : 0);
+	p_library_handle = (void *)LoadLibraryExW(path.c_str(), NULL, (p_also_set_library_path && has_dll_directory_api) ? LOAD_LIBRARY_SEARCH_DEFAULT_DIRS : 0);
 
-	if (p_also_set_library_path && has_dll_directory_api) {
+	if (cookie) {
 		remove_dll_directory(cookie);
 	}
 
@@ -1844,8 +1883,123 @@ void OS_Windows::set_cursor_shape(CursorShape p_shape) {
 		IDC_HELP
 	};
 
-	SetCursor(LoadCursor(hInstance, win_cursors[p_shape]));
+	if (cursors[p_shape] != NULL) {
+		SetCursor(cursors[p_shape]);
+	} else {
+		SetCursor(LoadCursor(hInstance, win_cursors[p_shape]));
+	}
 	cursor_shape = p_shape;
+}
+
+void OS_Windows::set_custom_mouse_cursor(const RES &p_cursor, CursorShape p_shape, const Vector2 &p_hotspot) {
+	if (p_cursor.is_valid()) {
+		Ref<Texture> texture = p_cursor;
+		Ref<Image> image = texture->get_data();
+
+		UINT image_size = 32 * 32;
+		UINT size = sizeof(UINT) * image_size;
+
+		ERR_FAIL_COND(texture->get_width() != 32 || texture->get_height() != 32);
+
+		// Create the BITMAP with alpha channel
+		COLORREF *buffer = (COLORREF *)malloc(sizeof(COLORREF) * image_size);
+
+		image->lock();
+		for (UINT index = 0; index < image_size; index++) {
+			int column_index = floor(index / 32);
+			int row_index = index % 32;
+
+			Color pcColor = image->get_pixel(row_index, column_index);
+			*(buffer + index) = image->get_pixel(row_index, column_index).to_argb32();
+		}
+		image->unlock();
+
+		// Using 4 channels, so 4 * 8 bits
+		HBITMAP bitmap = CreateBitmap(32, 32, 1, 4 * 8, buffer);
+		COLORREF clrTransparent = -1;
+
+		// Create the AND and XOR masks for the bitmap
+		HBITMAP hAndMask = NULL;
+		HBITMAP hXorMask = NULL;
+
+		GetMaskBitmaps(bitmap, clrTransparent, hAndMask, hXorMask);
+
+		if (NULL == hAndMask || NULL == hXorMask) {
+			return;
+		}
+
+		// Finally, create the icon
+		ICONINFO iconinfo = { 0 };
+		iconinfo.fIcon = FALSE;
+		iconinfo.xHotspot = p_hotspot.x;
+		iconinfo.yHotspot = p_hotspot.y;
+		iconinfo.hbmMask = hAndMask;
+		iconinfo.hbmColor = hXorMask;
+
+		cursors[p_shape] = CreateIconIndirect(&iconinfo);
+
+		if (p_shape == CURSOR_ARROW) {
+			SetCursor(cursors[p_shape]);
+		}
+
+		if (hAndMask != NULL) {
+			DeleteObject(hAndMask);
+		}
+
+		if (hXorMask != NULL) {
+			DeleteObject(hXorMask);
+		}
+	}
+}
+
+void OS_Windows::GetMaskBitmaps(HBITMAP hSourceBitmap, COLORREF clrTransparent, OUT HBITMAP &hAndMaskBitmap, OUT HBITMAP &hXorMaskBitmap) {
+
+	// Get the system display DC
+	HDC hDC = GetDC(NULL);
+
+	// Create helper DC
+	HDC hMainDC = CreateCompatibleDC(hDC);
+	HDC hAndMaskDC = CreateCompatibleDC(hDC);
+	HDC hXorMaskDC = CreateCompatibleDC(hDC);
+
+	// Get the dimensions of the source bitmap
+	BITMAP bm;
+	GetObject(hSourceBitmap, sizeof(BITMAP), &bm);
+
+	// Create the mask bitmaps
+	hAndMaskBitmap = CreateCompatibleBitmap(hDC, bm.bmWidth, bm.bmHeight); // color
+	hXorMaskBitmap = CreateCompatibleBitmap(hDC, bm.bmWidth, bm.bmHeight); // color
+
+	// Release the system display DC
+	ReleaseDC(NULL, hDC);
+
+	// Select the bitmaps to helper DC
+	HBITMAP hOldMainBitmap = (HBITMAP)SelectObject(hMainDC, hSourceBitmap);
+	HBITMAP hOldAndMaskBitmap = (HBITMAP)SelectObject(hAndMaskDC, hAndMaskBitmap);
+	HBITMAP hOldXorMaskBitmap = (HBITMAP)SelectObject(hXorMaskDC, hXorMaskBitmap);
+
+	// Assign the monochrome AND mask bitmap pixels so that a pixels of the source bitmap
+	// with 'clrTransparent' will be white pixels of the monochrome bitmap
+	SetBkColor(hMainDC, clrTransparent);
+	BitBlt(hAndMaskDC, 0, 0, bm.bmWidth, bm.bmHeight, hMainDC, 0, 0, SRCCOPY);
+
+	// Assign the color XOR mask bitmap pixels so that a pixels of the source bitmap
+	// with 'clrTransparent' will be black and rest the pixels same as corresponding
+	// pixels of the source bitmap
+	SetBkColor(hXorMaskDC, RGB(0, 0, 0));
+	SetTextColor(hXorMaskDC, RGB(255, 255, 255));
+	BitBlt(hXorMaskDC, 0, 0, bm.bmWidth, bm.bmHeight, hAndMaskDC, 0, 0, SRCCOPY);
+	BitBlt(hXorMaskDC, 0, 0, bm.bmWidth, bm.bmHeight, hMainDC, 0, 0, SRCAND);
+
+	// Deselect bitmaps from the helper DC
+	SelectObject(hMainDC, hOldMainBitmap);
+	SelectObject(hAndMaskDC, hOldAndMaskBitmap);
+	SelectObject(hXorMaskDC, hOldXorMaskBitmap);
+
+	// Delete the helper DC
+	DeleteDC(hXorMaskDC);
+	DeleteDC(hAndMaskDC);
+	DeleteDC(hMainDC);
 }
 
 Error OS_Windows::execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr) {
@@ -2079,6 +2233,36 @@ String OS_Windows::get_locale() const {
 	return "en";
 }
 
+// We need this because GetSystemInfo() is unreliable on WOW64
+// see https://msdn.microsoft.com/en-us/library/windows/desktop/ms724381(v=vs.85).aspx
+// Taken from MSDN
+typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS)(HANDLE, PBOOL);
+LPFN_ISWOW64PROCESS fnIsWow64Process;
+
+BOOL is_wow64() {
+	BOOL wow64 = FALSE;
+
+	fnIsWow64Process = (LPFN_ISWOW64PROCESS)GetProcAddress(GetModuleHandle(TEXT("kernel32")), "IsWow64Process");
+
+	if (fnIsWow64Process) {
+		if (!fnIsWow64Process(GetCurrentProcess(), &wow64)) {
+			wow64 = FALSE;
+		}
+	}
+
+	return wow64;
+}
+
+int OS_Windows::get_processor_count() const {
+	SYSTEM_INFO sysinfo;
+	if (is_wow64())
+		GetNativeSystemInfo(&sysinfo);
+	else
+		GetSystemInfo(&sysinfo);
+
+	return sysinfo.dwNumberOfProcessors;
+}
+
 OS::LatinKeyboardVariant OS_Windows::get_latin_keyboard_variant() const {
 
 	unsigned long azerty[] = {
@@ -2280,6 +2464,24 @@ String OS_Windows::get_user_data_dir() const {
 	return ProjectSettings::get_singleton()->get_resource_path();
 }
 
+String OS_Windows::get_unique_id() const {
+
+	HW_PROFILE_INFO HwProfInfo;
+	ERR_FAIL_COND_V(!GetCurrentHwProfile(&HwProfInfo), "");
+	return String(HwProfInfo.szHwProfileGuid);
+}
+
+void OS_Windows::set_ime_position(const Point2 &p_pos) {
+
+	HIMC himc = ImmGetContext(hWnd);
+	COMPOSITIONFORM cps;
+	cps.dwStyle = CFS_FORCE_POSITION;
+	cps.ptCurrentPos.x = p_pos.x;
+	cps.ptCurrentPos.y = p_pos.y;
+	ImmSetCompositionWindow(himc, &cps);
+	ImmReleaseContext(hWnd, himc);
+}
+
 bool OS_Windows::is_joy_known(int p_device) {
 	return input->is_joy_mapped(p_device);
 }
@@ -2288,19 +2490,19 @@ String OS_Windows::get_joy_guid(int p_device) const {
 	return input->get_joy_guid_remapped(p_device);
 }
 
-void OS_Windows::set_use_vsync(bool p_enable) {
+void OS_Windows::_set_use_vsync(bool p_enable) {
 
 	if (gl_context)
 		gl_context->set_use_vsync(p_enable);
 }
-
+/*
 bool OS_Windows::is_vsync_enabled() const {
 
 	if (gl_context)
 		return gl_context->is_using_vsync();
 
 	return true;
-}
+}*/
 
 OS::PowerState OS_Windows::get_power_state() {
 	return power_manager->get_power_state();

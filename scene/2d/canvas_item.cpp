@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "canvas_item.h"
 #include "core/method_bind_ext.gen.inc"
 #include "message_queue.h"
@@ -100,7 +101,7 @@ void CanvasItemMaterial::_update_shader() {
 		case LIGHT_MODE_UNSHADED: code += ",unshaded"; break;
 		case LIGHT_MODE_LIGHT_ONLY: code += ",light_only"; break;
 	}
-	code += ";\n"; //thats it.
+	code += ";\n"; //that's it.
 
 	ShaderData shader_data;
 	shader_data.shader = VS::get_singleton()->shader_create();
@@ -683,7 +684,7 @@ void CanvasItem::draw_texture(const Ref<Texture> &p_texture, const Point2 &p_pos
 
 	ERR_FAIL_COND(p_texture.is_null());
 
-	p_texture->draw(canvas_item, p_pos, p_modulate);
+	p_texture->draw(canvas_item, p_pos, p_modulate, false, p_normal_map);
 }
 
 void CanvasItem::draw_texture_rect(const Ref<Texture> &p_texture, const Rect2 &p_rect, bool p_tile, const Color &p_modulate, bool p_transpose, const Ref<Texture> &p_normal_map) {
@@ -776,6 +777,22 @@ void CanvasItem::draw_colored_polygon(const Vector<Point2> &p_points, const Colo
 	RID rid_normal = p_normal_map.is_valid() ? p_normal_map->get_rid() : RID();
 
 	VisualServer::get_singleton()->canvas_item_add_polygon(canvas_item, p_points, colors, p_uvs, rid, rid_normal, p_antialiased);
+}
+
+void CanvasItem::draw_mesh(const Ref<Mesh> &p_mesh, const Ref<Texture> &p_texture, const Ref<Texture> &p_normal_map) {
+
+	ERR_FAIL_COND(p_mesh.is_null());
+	RID texture_rid = p_texture.is_valid() ? p_texture->get_rid() : RID();
+	RID normal_map_rid = p_normal_map.is_valid() ? p_normal_map->get_rid() : RID();
+
+	VisualServer::get_singleton()->canvas_item_add_mesh(canvas_item, p_mesh->get_rid(), texture_rid, normal_map_rid);
+}
+void CanvasItem::draw_multimesh(const Ref<MultiMesh> &p_multimesh, const Ref<Texture> &p_texture, const Ref<Texture> &p_normal_map) {
+
+	ERR_FAIL_COND(p_multimesh.is_null());
+	RID texture_rid = p_texture.is_valid() ? p_texture->get_rid() : RID();
+	RID normal_map_rid = p_normal_map.is_valid() ? p_normal_map->get_rid() : RID();
+	VisualServer::get_singleton()->canvas_item_add_multimesh(canvas_item, p_multimesh->get_rid(), texture_rid, normal_map_rid);
 }
 
 void CanvasItem::draw_string(const Ref<Font> &p_font, const Point2 &p_pos, const String &p_text, const Color &p_modulate, int p_clip_w) {
@@ -1015,6 +1032,8 @@ void CanvasItem::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("draw_colored_polygon", "points", "color", "uvs", "texture", "normal_map", "antialiased"), &CanvasItem::draw_colored_polygon, DEFVAL(PoolVector2Array()), DEFVAL(Variant()), DEFVAL(Variant()), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("draw_string", "font", "position", "text", "modulate", "clip_w"), &CanvasItem::draw_string, DEFVAL(Color(1, 1, 1)), DEFVAL(-1));
 	ClassDB::bind_method(D_METHOD("draw_char", "font", "position", "char", "next", "modulate"), &CanvasItem::draw_char, DEFVAL(Color(1, 1, 1)));
+	ClassDB::bind_method(D_METHOD("draw_mesh", "mesh", "texture", "normal_map"), &CanvasItem::draw_mesh, DEFVAL(Ref<Texture>()));
+	ClassDB::bind_method(D_METHOD("draw_multimesh", "mesh", "texture", "normal_map"), &CanvasItem::draw_mesh, DEFVAL(Ref<Texture>()));
 
 	ClassDB::bind_method(D_METHOD("draw_set_transform", "position", "rotation", "scale"), &CanvasItem::draw_set_transform);
 	ClassDB::bind_method(D_METHOD("draw_set_transform_matrix", "xform"), &CanvasItem::draw_set_transform_matrix);
@@ -1058,9 +1077,9 @@ void CanvasItem::_bind_methods() {
 	ADD_GROUP("Material", "");
 	ADD_PROPERTYNZ(PropertyInfo(Variant::OBJECT, "material", PROPERTY_HINT_RESOURCE_TYPE, "ShaderMaterial,CanvasItemMaterial"), "set_material", "get_material");
 	ADD_PROPERTYNZ(PropertyInfo(Variant::BOOL, "use_parent_material"), "set_use_parent_material", "get_use_parent_material");
-	//exporting these two things doesn't really make much sense i think
-	//ADD_PROPERTY( PropertyInfo(Variant::BOOL,"transform/toplevel"), "set_as_toplevel","is_set_as_toplevel") ;
-	//ADD_PROPERTY(PropertyInfo(Variant::BOOL,"transform/notify"),"set_transform_notify","is_transform_notify_enabled");
+	//exporting these things doesn't really make much sense i think
+	// ADD_PROPERTY(PropertyInfo(Variant::BOOL, "toplevel", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "set_as_toplevel", "is_set_as_toplevel");
+	// ADD_PROPERTY(PropertyInfo(Variant::BOOL,"transform/notify"),"set_transform_notify","is_transform_notify_enabled");
 
 	ADD_SIGNAL(MethodInfo("draw"));
 	ADD_SIGNAL(MethodInfo("visibility_changed"));

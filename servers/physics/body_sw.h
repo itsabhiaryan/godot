@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef BODY_SW_H
 #define BODY_SW_H
 
@@ -244,10 +245,19 @@ public:
 		biased_angular_velocity += _inv_inertia_tensor.xform(p_j);
 	}
 
+	_FORCE_INLINE_ void add_central_force(const Vector3 &p_force) {
+
+		applied_force += p_force;
+	}
+
 	_FORCE_INLINE_ void add_force(const Vector3 &p_force, const Vector3 &p_pos) {
 
 		applied_force += p_force;
 		applied_torque += p_pos.cross(p_force);
+	}
+
+	_FORCE_INLINE_ void add_torque(const Vector3 &p_torque) {
+		applied_torque += p_torque;
 	}
 
 	void set_active(bool p_active);
@@ -400,7 +410,9 @@ public:
 	virtual void set_transform(const Transform &p_transform) { body->set_state(PhysicsServer::BODY_STATE_TRANSFORM, p_transform); }
 	virtual Transform get_transform() const { return body->get_transform(); }
 
+	virtual void add_central_force(const Vector3 &p_force) { body->add_central_force(p_force); }
 	virtual void add_force(const Vector3 &p_force, const Vector3 &p_pos) { body->add_force(p_force, p_pos); }
+	virtual void add_torque(const Vector3 &p_torque) { body->add_torque(p_torque); }
 	virtual void apply_impulse(const Vector3 &p_pos, const Vector3 &p_j) { body->apply_impulse(p_pos, p_j); }
 	virtual void apply_torque_impulse(const Vector3 &p_j) { body->apply_torque_impulse(p_j); }
 

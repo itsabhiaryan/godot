@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef PHYSICS2DSERVERWRAPMT_H
 #define PHYSICS2DSERVERWRAPMT_H
 
@@ -244,10 +245,10 @@ public:
 
 	FUNC2(body_set_pickable, RID, bool);
 
-	bool body_test_motion(RID p_body, const Transform2D &p_from, const Vector2 &p_motion, real_t p_margin = 0.001, MotionResult *r_result = NULL) {
+	bool body_test_motion(RID p_body, const Transform2D &p_from, const Vector2 &p_motion, bool p_infinite_inertia, real_t p_margin = 0.001, MotionResult *r_result = NULL) {
 
 		ERR_FAIL_COND_V(main_thread != Thread::get_caller_id(), false);
-		return physics_2d_server->body_test_motion(p_body, p_from, p_motion, p_margin, r_result);
+		return physics_2d_server->body_test_motion(p_body, p_from, p_motion, p_infinite_inertia, p_margin, r_result);
 	}
 
 	// this function only works on physics process, errors and returns null otherwise
@@ -261,6 +262,9 @@ public:
 
 	FUNC3(joint_set_param, RID, JointParam, real_t);
 	FUNC2RC(real_t, joint_get_param, RID, JointParam);
+
+	FUNC2(joint_disable_collisions_between_bodies, RID, const bool);
+	FUNC1RC(bool, joint_is_disabled_collisions_between_bodies, RID);
 
 	///FUNC3RID(pin_joint,const Vector2&,RID,RID);
 	///FUNC5RID(groove_joint,const Vector2&,const Vector2&,const Vector2&,RID,RID);

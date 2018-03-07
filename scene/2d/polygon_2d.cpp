@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,10 +27,35 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "polygon_2d.h"
+#include "core/math/geometry.h"
+
+Dictionary Polygon2D::_edit_get_state() const {
+	Dictionary state = Node2D::_edit_get_state();
+	state["offset"] = offset;
+	return state;
+}
+
+void Polygon2D::_edit_set_state(const Dictionary &p_state) {
+	Node2D::_edit_set_state(p_state);
+	set_offset(p_state["offset"]);
+}
+
+void Polygon2D::_edit_set_pivot(const Point2 &p_pivot) {
+	set_position(get_transform().xform(p_pivot));
+	set_offset(get_offset() - p_pivot);
+}
+
+Point2 Polygon2D::_edit_get_pivot() const {
+	return Vector2();
+}
+
+bool Polygon2D::_edit_use_pivot() const {
+	return true;
+}
 
 Rect2 Polygon2D::_edit_get_rect() const {
-
 	if (rect_cache_dirty) {
 		int l = polygon.size();
 		PoolVector<Vector2>::Read r = polygon.read();
@@ -42,25 +67,15 @@ Rect2 Polygon2D::_edit_get_rect() const {
 			else
 				item_rect.expand_to(pos);
 		}
-		item_rect = item_rect.grow(20);
 		rect_cache_dirty = false;
 	}
 
 	return item_rect;
 }
 
-void Polygon2D::_edit_set_pivot(const Point2 &p_pivot) {
+bool Polygon2D::_edit_is_selected_on_click(const Point2 &p_point, double p_tolerance) const {
 
-	set_offset(p_pivot);
-}
-
-Point2 Polygon2D::_edit_get_pivot() const {
-
-	return get_offset();
-}
-bool Polygon2D::_edit_use_pivot() const {
-
-	return true;
+	return Geometry::is_point_in_polygon(p_point - get_offset(), Variant(polygon));
 }
 
 void Polygon2D::_notification(int p_what) {
@@ -177,7 +192,80 @@ void Polygon2D::_notification(int p_what) {
 			//			Vector<int> indices = Geometry::triangulate_polygon(points);
 			//			VS::get_singleton()->canvas_item_add_triangle_array(get_canvas_item(), indices, points, colors, uvs, texture.is_valid() ? texture->get_rid() : RID());
 
-			VS::get_singleton()->canvas_item_add_polygon(get_canvas_item(), points, colors, uvs, texture.is_valid() ? texture->get_rid() : RID(), RID(), antialiased);
+			if (invert || splits.size() == 0) {
+				VS::get_singleton()->canvas_item_add_polygon(get_canvas_item(), points, colors, uvs, texture.is_valid() ? texture->get_rid() : RID(), RID(), antialiased);
+			} else {
+				//use splits
+				Vector<int> loop;
+				int sc = splits.size();
+				PoolVector<int>::Read r = splits.read();
+				int last = points.size();
+
+				Vector<Vector<int> > loops;
+
+				for (int i = 0; i < last; i++) {
+
+					int split;
+					int min_end = -1;
+
+					do {
+
+						loop.push_back(i);
+
+						split = -1;
+						int end = -1;
+
+						for (int j = 0; j < sc; j += 2) {
+							if (r[j + 1] >= last)
+								continue; //no longer valid
+							if (min_end != -1 && r[j + 1] >= min_end)
+								continue;
+							if (r[j] == i) {
+								if (split == -1 || r[j + 1] > end) {
+									split = r[j];
+									end = r[j + 1];
+								}
+							}
+						}
+
+						if (split != -1) {
+							for (int j = end; j < last; j++) {
+								loop.push_back(j);
+							}
+							loops.push_back(loop);
+							last = end + 1;
+							loop.clear();
+							min_end = end; //avoid this split from repeating
+						}
+
+					} while (split != -1);
+				}
+
+				if (loop.size()) {
+					loops.push_back(loop);
+				}
+
+				Vector<int> indices;
+
+				for (int i = 0; i < loops.size(); i++) {
+					Vector<int> loop = loops[i];
+					Vector<Vector2> vertices;
+					vertices.resize(loop.size());
+					for (int j = 0; j < vertices.size(); j++) {
+						vertices[j] = points[loop[j]];
+					}
+					Vector<int> sub_indices = Geometry::triangulate_polygon(vertices);
+					int from = indices.size();
+					indices.resize(from + sub_indices.size());
+					for (int j = 0; j < sub_indices.size(); j++) {
+						indices[from + j] = loop[sub_indices[j]];
+					}
+				}
+
+				//print_line("loops: " + itos(loops.size()) + " indices: " + itos(indices.size()));
+
+				VS::get_singleton()->canvas_item_add_triangle_array(get_canvas_item(), indices, points, colors, uvs, texture.is_valid() ? texture->get_rid() : RID());
+			}
 
 		} break;
 	}
@@ -203,6 +291,18 @@ void Polygon2D::set_uv(const PoolVector<Vector2> &p_uv) {
 PoolVector<Vector2> Polygon2D::get_uv() const {
 
 	return uv;
+}
+
+void Polygon2D::set_splits(const PoolVector<int> &p_splits) {
+
+	ERR_FAIL_COND(p_splits.size() & 1); //splits should be multiple of 2
+	splits = p_splits;
+	update();
+}
+
+PoolVector<int> Polygon2D::get_splits() const {
+
+	return splits;
 }
 
 void Polygon2D::set_color(const Color &p_color) {
@@ -318,6 +418,7 @@ void Polygon2D::set_offset(const Vector2 &p_offset) {
 	offset = p_offset;
 	rect_cache_dirty = true;
 	update();
+	_change_notify("offset");
 }
 
 Vector2 Polygon2D::get_offset() const {
@@ -335,6 +436,9 @@ void Polygon2D::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_color", "color"), &Polygon2D::set_color);
 	ClassDB::bind_method(D_METHOD("get_color"), &Polygon2D::get_color);
+
+	ClassDB::bind_method(D_METHOD("set_splits", "splits"), &Polygon2D::set_splits);
+	ClassDB::bind_method(D_METHOD("get_splits"), &Polygon2D::get_splits);
 
 	ClassDB::bind_method(D_METHOD("set_vertex_colors", "vertex_colors"), &Polygon2D::set_vertex_colors);
 	ClassDB::bind_method(D_METHOD("get_vertex_colors"), &Polygon2D::get_vertex_colors);
@@ -368,6 +472,7 @@ void Polygon2D::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::POOL_VECTOR2_ARRAY, "polygon"), "set_polygon", "get_polygon");
 	ADD_PROPERTY(PropertyInfo(Variant::POOL_VECTOR2_ARRAY, "uv"), "set_uv", "get_uv");
+	ADD_PROPERTY(PropertyInfo(Variant::POOL_INT_ARRAY, "splits"), "set_splits", "get_splits");
 	ADD_PROPERTY(PropertyInfo(Variant::COLOR, "color"), "set_color", "get_color");
 	ADD_PROPERTY(PropertyInfo(Variant::POOL_COLOR_ARRAY, "vertex_colors"), "set_vertex_colors", "get_vertex_colors");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "offset"), "set_offset", "get_offset");
@@ -377,7 +482,8 @@ void Polygon2D::_bind_methods() {
 	ADD_GROUP("Texture", "texture_");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "texture_offset"), "set_texture_offset", "get_texture_offset");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "texture_scale"), "set_texture_scale", "get_texture_scale");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "texture_rotation", PROPERTY_HINT_RANGE, "-1440,1440,0.1"), "set_texture_rotation_degrees", "get_texture_rotation_degrees");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "texture_rotation_degrees", PROPERTY_HINT_RANGE, "-1440,1440,0.1"), "set_texture_rotation_degrees", "get_texture_rotation_degrees");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "texture_rotation", PROPERTY_HINT_NONE, "", 0), "set_texture_rotation", "get_texture_rotation");
 
 	ADD_GROUP("Invert", "invert_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "invert_enable"), "set_invert", "get_invert");

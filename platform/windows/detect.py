@@ -69,6 +69,7 @@ def get_opts():
         # Vista support dropped after EOL due to GH-10243
         ('target_win_version', 'Targeted Windows version, >= 0x0601 (Windows 7)', '0x0601'),
         EnumVariable('debug_symbols', 'Add debug symbols to release version', 'yes', ('yes', 'no', 'full')),
+        BoolVariable('separate_debug_symbols', 'Create a separate file with the debug symbols', False),
     ]
 
 
@@ -147,11 +148,11 @@ def configure(env):
         ## Compiler configuration
 
         env['ENV'] = os.environ
-        # This detection function needs the tools env (that is env['ENV'], not SCons's env), and that is why it's this far bellow in the code
+        # This detection function needs the tools env (that is env['ENV'], not SCons's env), and that is why it's this far below in the code
         compiler_version_str = methods.detect_visual_c_compiler_version(env['ENV'])
 
         print("Detected MSVC compiler: " + compiler_version_str)
-        # If building for 64bit architecture, disable assembly optimisations for 32 bit builds (theora as of writting)... vc compiler for 64bit can not compile _asm
+        # If building for 64bit architecture, disable assembly optimisations for 32 bit builds (theora as of writing)... vc compiler for 64bit can not compile _asm
         if(compiler_version_str == "amd64" or compiler_version_str == "x86_amd64"):
             env["bits"] = "64"
             env["x86_libtheora_opt_vc"] = False
@@ -178,7 +179,7 @@ def configure(env):
         if env["bits"] == "64":
             env.Append(CCFLAGS=['/D_WIN64'])
 
-        LIBS = ['winmm', 'opengl32', 'dsound', 'kernel32', 'ole32', 'oleaut32', 'user32', 'gdi32', 'IPHLPAPI', 'Shlwapi', 'wsock32', 'Ws2_32', 'shell32', 'advapi32', 'dinput8', 'dxguid']
+        LIBS = ['winmm', 'opengl32', 'dsound', 'kernel32', 'ole32', 'oleaut32', 'user32', 'gdi32', 'IPHLPAPI', 'Shlwapi', 'wsock32', 'Ws2_32', 'shell32', 'advapi32', 'dinput8', 'dxguid', 'imm32', 'bcrypt']
         env.Append(LINKFLAGS=[p + env["LIBSUFFIX"] for p in LIBS])
 
         env.Append(LIBPATH=[os.getenv("WindowsSdkDir") + "/Lib"])
@@ -188,8 +189,13 @@ def configure(env):
         else:
             VC_PATH = ""
 
-        if (env["openmp"]):
-            env.Append(CPPFLAGS=['/openmp'])
+        if (env["use_lto"]):
+            env.Append(CCFLAGS=['/GL'])
+            env.Append(ARFLAGS=['/LTCG'])
+            if env["progress"]:
+                env.Append(LINKFLAGS=['/LTCG:STATUS'])
+            else:
+                env.Append(LINKFLAGS=['/LTCG'])
 
         env.Append(CCFLAGS=["/I" + p for p in os.getenv("INCLUDE").split(";")])
         env.Append(LIBPATH=[p for p in os.getenv("LIB").split(";")])
@@ -260,16 +266,13 @@ def configure(env):
         env['CXX'] = mingw_prefix + "g++"
         env['AR'] = mingw_prefix + "gcc-ar"
         env['RANLIB'] = mingw_prefix + "gcc-ranlib"
-        env['LD'] = mingw_prefix + "g++"
+        env['LINK'] = mingw_prefix + "g++"
         env["x86_libtheora_opt_gcc"] = True
 
         if env['use_lto']:
             env.Append(CCFLAGS=['-flto'])
             env.Append(LINKFLAGS=['-flto=' + str(env.GetOption("num_jobs"))])
 
-        if (env["openmp"]):
-            env.Append(CPPFLAGS=['-fopenmp'])
-            env.Append(LIBS=['gomp'])
 
         ## Compile flags
 
@@ -278,7 +281,7 @@ def configure(env):
         env.Append(CCFLAGS=['-DRTAUDIO_ENABLED'])
         env.Append(CCFLAGS=['-DWASAPI_ENABLED'])
         env.Append(CCFLAGS=['-DWINVER=%s' % env['target_win_version'], '-D_WIN32_WINNT=%s' % env['target_win_version']])
-        env.Append(LIBS=['mingw32', 'opengl32', 'dsound', 'ole32', 'd3d9', 'winmm', 'gdi32', 'iphlpapi', 'shlwapi', 'wsock32', 'ws2_32', 'kernel32', 'oleaut32', 'dinput8', 'dxguid', 'ksuser'])
+        env.Append(LIBS=['mingw32', 'opengl32', 'dsound', 'ole32', 'd3d9', 'winmm', 'gdi32', 'iphlpapi', 'shlwapi', 'wsock32', 'ws2_32', 'kernel32', 'oleaut32', 'dinput8', 'dxguid', 'ksuser', 'imm32', 'bcrypt'])
 
         env.Append(CPPFLAGS=['-DMINGW_ENABLED'])
 

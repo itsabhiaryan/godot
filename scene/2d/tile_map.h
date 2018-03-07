@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef TILE_MAP_H
 #define TILE_MAP_H
 
@@ -245,6 +246,7 @@ public:
 
 	void make_bitmask_area_dirty(const Vector2 &p_pos);
 	void update_bitmask_area(const Vector2 &p_pos);
+	void update_bitmask_region(const Vector2 &p_start = Vector2(), const Vector2 &p_end = Vector2());
 	void update_cell_bitmask(int p_x, int p_y);
 	void update_dirty_bitmask();
 

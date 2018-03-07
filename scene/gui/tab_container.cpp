@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "tab_container.h"
 
 #include "message_queue.h"
@@ -473,19 +474,22 @@ void TabContainer::remove_child_notify(Node *p_child) {
 
 	Control::remove_child_notify(p_child);
 
-	int tc = get_tab_count();
-	if (current == tc - 1) {
-		current--;
-		if (current < 0)
-			current = 0;
-		else {
-			call_deferred("set_current_tab", current);
-		}
-	}
+	call_deferred("_update_current_tab");
 
 	p_child->disconnect("renamed", this, "_child_renamed_callback");
 
 	update();
+}
+
+void TabContainer::_update_current_tab() {
+
+	int tc = get_tab_count();
+	if (current >= tc)
+		current = tc - 1;
+	if (current < 0)
+		current = 0;
+	else
+		set_current_tab(current);
 }
 
 void TabContainer::set_tab_align(TabAlign p_align) {
@@ -663,6 +667,7 @@ void TabContainer::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("_child_renamed_callback"), &TabContainer::_child_renamed_callback);
 	ClassDB::bind_method(D_METHOD("_on_theme_changed"), &TabContainer::_on_theme_changed);
+	ClassDB::bind_method(D_METHOD("_update_current_tab"), &TabContainer::_update_current_tab);
 
 	ADD_SIGNAL(MethodInfo("tab_changed", PropertyInfo(Variant::INT, "tab")));
 	ADD_SIGNAL(MethodInfo("tab_selected", PropertyInfo(Variant::INT, "tab")));

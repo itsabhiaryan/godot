@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "mesh.h"
 
 #include "pair.h"
@@ -558,12 +559,6 @@ bool ArrayMesh::_set(const StringName &p_name, const Variant &p_value) {
 		return true;
 	}
 
-	if (sname == "custom_aabb/custom_aabb") {
-
-		set_custom_aabb(p_value);
-		return true;
-	}
-
 	if (!sname.begins_with("surfaces"))
 		return false;
 
@@ -672,11 +667,6 @@ bool ArrayMesh::_get(const StringName &p_name, Variant &r_ret) const {
 		else if (what == "name")
 			r_ret = surface_get_name(idx);
 		return true;
-	} else if (sname == "custom_aabb/custom_aabb") {
-
-		r_ret = custom_aabb;
-		return true;
-
 	} else if (!sname.begins_with("surfaces"))
 		return false;
 
@@ -727,13 +717,13 @@ void ArrayMesh::_get_property_list(List<PropertyInfo> *p_list) const {
 		return;
 
 	if (blend_shapes.size()) {
-		p_list->push_back(PropertyInfo(Variant::POOL_STRING_ARRAY, "blend_shape/names", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::POOL_STRING_ARRAY, "blend_shape/names", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL));
 		p_list->push_back(PropertyInfo(Variant::INT, "blend_shape/mode", PROPERTY_HINT_ENUM, "Normalized,Relative"));
 	}
 
 	for (int i = 0; i < surfaces.size(); i++) {
 
-		p_list->push_back(PropertyInfo(Variant::DICTIONARY, "surfaces/" + itos(i), PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::DICTIONARY, "surfaces/" + itos(i), PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL));
 		p_list->push_back(PropertyInfo(Variant::STRING, "surface_" + itos(i + 1) + "/name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR));
 		if (surfaces[i].is_2d) {
 			p_list->push_back(PropertyInfo(Variant::OBJECT, "surface_" + itos(i + 1) + "/material", PROPERTY_HINT_RESOURCE_TYPE, "ShaderMaterial,CanvasItemMaterial", PROPERTY_USAGE_EDITOR));
@@ -741,8 +731,6 @@ void ArrayMesh::_get_property_list(List<PropertyInfo> *p_list) const {
 			p_list->push_back(PropertyInfo(Variant::OBJECT, "surface_" + itos(i + 1) + "/material", PROPERTY_HINT_RESOURCE_TYPE, "ShaderMaterial,SpatialMaterial", PROPERTY_USAGE_EDITOR));
 		}
 	}
-
-	p_list->push_back(PropertyInfo(Variant::AABB, "custom_aabb/custom_aabb"));
 }
 
 void ArrayMesh::_recompute_aabb() {
@@ -1111,13 +1099,14 @@ Error ArrayMesh::lightmap_unwrap(const Transform &p_base_transform, float p_texe
 		for (int j = 0; j < vc; j++) {
 
 			Vector3 v = p_base_transform.xform(r[j]);
+			Vector3 n = p_base_transform.basis.xform(rn[j]).normalized();
 
 			vertices[(j + vertex_ofs) * 3 + 0] = v.x;
 			vertices[(j + vertex_ofs) * 3 + 1] = v.y;
 			vertices[(j + vertex_ofs) * 3 + 2] = v.z;
-			normals[(j + vertex_ofs) * 3 + 0] = rn[j].x;
-			normals[(j + vertex_ofs) * 3 + 1] = rn[j].y;
-			normals[(j + vertex_ofs) * 3 + 2] = rn[j].z;
+			normals[(j + vertex_ofs) * 3 + 0] = n.x;
+			normals[(j + vertex_ofs) * 3 + 1] = n.y;
+			normals[(j + vertex_ofs) * 3 + 2] = n.z;
 			uv_index[j + vertex_ofs] = Pair<int, int>(i, j);
 		}
 
@@ -1278,11 +1267,16 @@ void ArrayMesh::_bind_methods() {
 	ClassDB::set_method_flags(get_class_static(), _scs_create("center_geometry"), METHOD_FLAGS_DEFAULT | METHOD_FLAG_EDITOR);
 	ClassDB::bind_method(D_METHOD("regen_normalmaps"), &ArrayMesh::regen_normalmaps);
 	ClassDB::set_method_flags(get_class_static(), _scs_create("regen_normalmaps"), METHOD_FLAGS_DEFAULT | METHOD_FLAG_EDITOR);
+	ClassDB::bind_method(D_METHOD("lightmap_unwrap"), &ArrayMesh::lightmap_unwrap);
+	ClassDB::set_method_flags(get_class_static(), _scs_create("lightmap_unwrap"), METHOD_FLAGS_DEFAULT | METHOD_FLAG_EDITOR);
 	ClassDB::bind_method(D_METHOD("get_faces"), &ArrayMesh::get_faces);
 	ClassDB::bind_method(D_METHOD("generate_triangle_mesh"), &ArrayMesh::generate_triangle_mesh);
 
 	ClassDB::bind_method(D_METHOD("set_custom_aabb", "aabb"), &ArrayMesh::set_custom_aabb);
 	ClassDB::bind_method(D_METHOD("get_custom_aabb"), &ArrayMesh::get_custom_aabb);
+
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "blend_shape_mode", PROPERTY_HINT_ENUM, "Normalized,Relative", PROPERTY_USAGE_NOEDITOR), "set_blend_shape_mode", "get_blend_shape_mode");
+	ADD_PROPERTY(PropertyInfo(Variant::AABB, "custom_aabb", PROPERTY_HINT_NONE, ""), "set_custom_aabb", "get_custom_aabb");
 
 	BIND_CONSTANT(NO_INDEX_ARRAY);
 	BIND_CONSTANT(ARRAY_WEIGHTS_SIZE);

@@ -1,13 +1,12 @@
 /*************************************************************************/
 /*  godot_result_callbacks.h                                             */
-/*  Author: AndreaCatania                                                */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -32,9 +31,14 @@
 #ifndef GODOT_RESULT_CALLBACKS_H
 #define GODOT_RESULT_CALLBACKS_H
 
-#include "BulletCollision/BroadphaseCollision/btBroadphaseProxy.h"
-#include "btBulletDynamicsCommon.h"
 #include "servers/physics_server.h"
+
+#include <BulletCollision/BroadphaseCollision/btBroadphaseProxy.h>
+#include <btBulletDynamicsCommon.h>
+
+/**
+	@author AndreaCatania
+*/
 
 class RigidBodyBullet;
 
@@ -89,12 +93,12 @@ public:
 struct GodotKinClosestConvexResultCallback : public btCollisionWorld::ClosestConvexResultCallback {
 public:
 	const RigidBodyBullet *m_self_object;
-	const bool m_ignore_areas;
+	const bool m_infinite_inertia;
 
-	GodotKinClosestConvexResultCallback(const btVector3 &convexFromWorld, const btVector3 &convexToWorld, const RigidBodyBullet *p_self_object, bool p_ignore_areas) :
+	GodotKinClosestConvexResultCallback(const btVector3 &convexFromWorld, const btVector3 &convexToWorld, const RigidBodyBullet *p_self_object, bool p_infinite_inertia) :
 			btCollisionWorld::ClosestConvexResultCallback(convexFromWorld, convexToWorld),
 			m_self_object(p_self_object),
-			m_ignore_areas(p_ignore_areas) {}
+			m_infinite_inertia(p_infinite_inertia) {}
 
 	virtual bool needsCollision(btBroadphaseProxy *proxy0) const;
 };
@@ -183,24 +187,21 @@ struct GodotDeepPenetrationContactResultCallback : public btManifoldResult {
 	int m_other_compound_shape_index;
 	const btCollisionObject *m_pointCollisionObject;
 
-	btScalar m_most_penetrated_distance;
-
 	GodotDeepPenetrationContactResultCallback(const btCollisionObjectWrapper *body0Wrap, const btCollisionObjectWrapper *body1Wrap) :
 			btManifoldResult(body0Wrap, body1Wrap),
 			m_pointCollisionObject(NULL),
 			m_penetration_distance(0),
-			m_other_compound_shape_index(0),
-			m_most_penetrated_distance(1e20) {}
+			m_other_compound_shape_index(0) {}
 
 	void reset() {
 		m_pointCollisionObject = NULL;
-		m_most_penetrated_distance = 1e20;
+		m_penetration_distance = 0;
 	}
 
 	bool hasHit() {
 		return m_pointCollisionObject;
 	}
 
-	virtual void addContactPoint(const btVector3 &normalOnBInWorld, const btVector3 &pointInWorld, btScalar depth);
+	virtual void addContactPoint(const btVector3 &normalOnBInWorld, const btVector3 &pointInWorldOnB, btScalar depth);
 };
 #endif // GODOT_RESULT_CALLBACKS_H

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "tile_set.h"
 #include "array.h"
 
@@ -56,8 +57,8 @@ bool TileSet::_set(const StringName &p_name, const Variant &p_value) {
 		tile_set_modulate(id, p_value);
 	else if (what == "region")
 		tile_set_region(id, p_value);
-	else if (what == "is_autotile")
-		tile_set_is_autotile(id, p_value);
+	else if (what == "tile_mode")
+		tile_set_tile_mode(id, (TileMode)((int)p_value));
 	else if (what.left(9) == "autotile/") {
 		what = what.right(9);
 		if (what == "bitmask_mode")
@@ -173,8 +174,8 @@ bool TileSet::_get(const StringName &p_name, Variant &r_ret) const {
 		r_ret = tile_get_modulate(id);
 	else if (what == "region")
 		r_ret = tile_get_region(id);
-	else if (what == "is_autotile")
-		r_ret = tile_get_is_autotile(id);
+	else if (what == "tile_mode")
+		r_ret = tile_get_tile_mode(id);
 	else if (what.left(9) == "autotile/") {
 		what = what.right(9);
 		if (what == "bitmask_mode")
@@ -211,7 +212,7 @@ bool TileSet::_get(const StringName &p_name, Variant &r_ret) const {
 			Vector3 v;
 			for (Map<Vector2, int>::Element *E = tile_map[id].autotile_data.priority_map.front(); E; E = E->next()) {
 				if (E->value() > 1) {
-					//Dont save default value
+					//Don't save default value
 					v.x = E->key().x;
 					v.y = E->key().y;
 					v.z = E->value();
@@ -257,16 +258,16 @@ void TileSet::_get_property_list(List<PropertyInfo> *p_list) const {
 		p_list->push_back(PropertyInfo(Variant::OBJECT, pre + "material", PROPERTY_HINT_RESOURCE_TYPE, "ShaderMaterial"));
 		p_list->push_back(PropertyInfo(Variant::COLOR, pre + "modulate"));
 		p_list->push_back(PropertyInfo(Variant::RECT2, pre + "region"));
-		p_list->push_back(PropertyInfo(Variant::BOOL, pre + "is_autotile", PROPERTY_HINT_NONE, ""));
-		if (tile_get_is_autotile(id)) {
-			p_list->push_back(PropertyInfo(Variant::INT, pre + "autotile/bitmask_mode", PROPERTY_HINT_ENUM, "2X2,3X3", PROPERTY_USAGE_NOEDITOR));
-			p_list->push_back(PropertyInfo(Variant::VECTOR2, pre + "autotile/icon_coordinate", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
-			p_list->push_back(PropertyInfo(Variant::VECTOR2, pre + "autotile/tile_size", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
-			p_list->push_back(PropertyInfo(Variant::INT, pre + "autotile/spacing", PROPERTY_HINT_RANGE, "0,256,1", PROPERTY_USAGE_NOEDITOR));
-			p_list->push_back(PropertyInfo(Variant::ARRAY, pre + "autotile/bitmask_flags", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
-			p_list->push_back(PropertyInfo(Variant::ARRAY, pre + "autotile/occluder_map", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
-			p_list->push_back(PropertyInfo(Variant::ARRAY, pre + "autotile/navpoly_map", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
-			p_list->push_back(PropertyInfo(Variant::ARRAY, pre + "autotile/priority_map", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::INT, pre + "tile_mode", PROPERTY_HINT_ENUM, "SINGLE_TILE,AUTO_TILE"));
+		if (tile_get_tile_mode(id) == AUTO_TILE) {
+			p_list->push_back(PropertyInfo(Variant::INT, pre + "autotile/bitmask_mode", PROPERTY_HINT_ENUM, "2X2,3X3", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL));
+			p_list->push_back(PropertyInfo(Variant::ARRAY, pre + "autotile/bitmask_flags", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL));
+			p_list->push_back(PropertyInfo(Variant::VECTOR2, pre + "autotile/icon_coordinate", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL));
+			p_list->push_back(PropertyInfo(Variant::VECTOR2, pre + "autotile/tile_size", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL));
+			p_list->push_back(PropertyInfo(Variant::INT, pre + "autotile/spacing", PROPERTY_HINT_RANGE, "0,256,1", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL));
+			p_list->push_back(PropertyInfo(Variant::ARRAY, pre + "autotile/occluder_map", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL));
+			p_list->push_back(PropertyInfo(Variant::ARRAY, pre + "autotile/navpoly_map", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL));
+			p_list->push_back(PropertyInfo(Variant::ARRAY, pre + "autotile/priority_map", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL));
 		}
 		p_list->push_back(PropertyInfo(Variant::VECTOR2, pre + "occluder_offset"));
 		p_list->push_back(PropertyInfo(Variant::OBJECT, pre + "occluder", PROPERTY_HINT_RESOURCE_TYPE, "OccluderPolygon2D"));
@@ -281,7 +282,6 @@ void TileSet::_get_property_list(List<PropertyInfo> *p_list) const {
 }
 
 void TileSet::create_tile(int p_id) {
-
 	ERR_FAIL_COND(tile_map.has(p_id));
 	tile_map[p_id] = TileData();
 	tile_map[p_id].autotile_data = AutotileData();
@@ -290,7 +290,6 @@ void TileSet::create_tile(int p_id) {
 }
 
 void TileSet::autotile_set_bitmask_mode(int p_id, BitmaskMode p_mode) {
-
 	ERR_FAIL_COND(!tile_map.has(p_id));
 	tile_map[p_id].autotile_data.bitmask_mode = p_mode;
 	_change_notify("");
@@ -308,6 +307,7 @@ void TileSet::tile_set_texture(int p_id, const Ref<Texture> &p_texture) {
 	ERR_FAIL_COND(!tile_map.has(p_id));
 	tile_map[p_id].texture = p_texture;
 	emit_changed();
+	_change_notify("texture");
 }
 
 Ref<Texture> TileSet::tile_get_texture(int p_id) const {
@@ -373,6 +373,7 @@ void TileSet::tile_set_region(int p_id, const Rect2 &p_region) {
 	ERR_FAIL_COND(!tile_map.has(p_id));
 	tile_map[p_id].region = p_region;
 	emit_changed();
+	_change_notify("region");
 }
 
 Rect2 TileSet::tile_get_region(int p_id) const {
@@ -381,18 +382,17 @@ Rect2 TileSet::tile_get_region(int p_id) const {
 	return tile_map[p_id].region;
 }
 
-void TileSet::tile_set_is_autotile(int p_id, bool p_is_autotile) {
-
+void TileSet::tile_set_tile_mode(int p_id, TileMode p_tile_mode) {
 	ERR_FAIL_COND(!tile_map.has(p_id));
-	tile_map[p_id].is_autotile = p_is_autotile;
-	_change_notify("");
+	tile_map[p_id].tile_mode = p_tile_mode;
 	emit_changed();
+	_change_notify("tile_mode");
 }
 
-bool TileSet::tile_get_is_autotile(int p_id) const {
+TileSet::TileMode TileSet::tile_get_tile_mode(int p_id) const {
 
-	ERR_FAIL_COND_V(!tile_map.has(p_id), false);
-	return tile_map[p_id].is_autotile;
+	ERR_FAIL_COND_V(!tile_map.has(p_id), SINGLE_TILE);
+	return tile_map[p_id].tile_mode;
 }
 
 void TileSet::autotile_set_icon_coordinate(int p_id, Vector2 coord) {
@@ -532,6 +532,7 @@ void TileSet::tile_set_name(int p_id, const String &p_name) {
 	ERR_FAIL_COND(!tile_map.has(p_id));
 	tile_map[p_id].name = p_name;
 	emit_changed();
+	_change_notify("name");
 }
 
 String TileSet::tile_get_name(int p_id) const {
@@ -893,8 +894,8 @@ void TileSet::clear() {
 void TileSet::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("create_tile", "id"), &TileSet::create_tile);
-	ClassDB::bind_method(D_METHOD("autotile_set_bitmask_mode", "mode"), &TileSet::autotile_set_bitmask_mode);
-	ClassDB::bind_method(D_METHOD("autotile_get_bitmask_mode"), &TileSet::autotile_get_bitmask_mode);
+	ClassDB::bind_method(D_METHOD("autotile_set_bitmask_mode", "id", "mode"), &TileSet::autotile_set_bitmask_mode);
+	ClassDB::bind_method(D_METHOD("autotile_get_bitmask_mode", "id"), &TileSet::autotile_get_bitmask_mode);
 	ClassDB::bind_method(D_METHOD("tile_set_name", "id", "name"), &TileSet::tile_set_name);
 	ClassDB::bind_method(D_METHOD("tile_get_name", "id"), &TileSet::tile_get_name);
 	ClassDB::bind_method(D_METHOD("tile_set_texture", "id", "texture"), &TileSet::tile_set_texture);

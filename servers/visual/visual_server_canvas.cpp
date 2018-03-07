@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "visual_server_canvas.h"
 #include "visual_server_global.h"
 #include "visual_server_viewport.h"
@@ -45,7 +46,7 @@ void VisualServerCanvas::_render_canvas_item_tree(Item *p_canvas_item, const Tra
 	for (int i = 0; i < z_range; i++) {
 		if (!z_list[i])
 			continue;
-		VSG::canvas_render->canvas_render_items(z_list[i], VS::CANVAS_ITEM_Z_MIN + i, p_modulate, p_lights);
+		VSG::canvas_render->canvas_render_items(z_list[i], VS::CANVAS_ITEM_Z_MIN + i, p_modulate, p_lights, p_transform);
 	}
 }
 
@@ -102,9 +103,9 @@ void VisualServerCanvas::_render_canvas_item(Item *p_canvas_item, const Transfor
 	}
 
 	if (ci->z_relative)
-		p_z = CLAMP(p_z + ci->z, VS::CANVAS_ITEM_Z_MIN, VS::CANVAS_ITEM_Z_MAX);
+		p_z = CLAMP(p_z + ci->z_index, VS::CANVAS_ITEM_Z_MIN, VS::CANVAS_ITEM_Z_MAX);
 	else
-		p_z = ci->z;
+		p_z = ci->z_index;
 
 	for (int i = 0; i < child_item_count; i++) {
 
@@ -213,7 +214,7 @@ void VisualServerCanvas::render_canvas(Canvas *p_canvas, const Transform2D &p_tr
 				_light_mask_canvas_items(VS::CANVAS_ITEM_Z_MIN + i, z_list[i], p_masked_lights);
 			}
 
-			VSG::canvas_render->canvas_render_items(z_list[i], VS::CANVAS_ITEM_Z_MIN + i, p_canvas->modulate, p_lights);
+			VSG::canvas_render->canvas_render_items(z_list[i], VS::CANVAS_ITEM_Z_MIN + i, p_canvas->modulate, p_lights, p_transform);
 		}
 	} else {
 
@@ -499,7 +500,6 @@ void VisualServerCanvas::canvas_item_add_multiline(RID p_item, const Vector<Poin
 	pline->antialiased = false; //todo
 	pline->multiline = true;
 
-	//	if (p_width <= 1) {
 	pline->lines = p_points;
 	pline->line_colors = p_colors;
 	if (pline->line_colors.size() == 0) {
@@ -507,66 +507,7 @@ void VisualServerCanvas::canvas_item_add_multiline(RID p_item, const Vector<Poin
 	} else if (pline->line_colors.size() > 1 && pline->line_colors.size() != pline->lines.size()) {
 		pline->line_colors.resize(1);
 	}
-#if 0
-//width not yet
-	} else {
-		//make a trianglestrip for drawing the line...
-		Vector2 prev_t;
-		pline->triangles.resize(p_points.size() * 2);
-		if (p_antialiased) {
-			pline->lines.resize(p_points.size() * 2);
-		}
 
-		if (p_colors.size() == 0) {
-			pline->triangle_colors.push_back(Color(1, 1, 1, 1));
-			if (p_antialiased) {
-				pline->line_colors.push_back(Color(1, 1, 1, 1));
-			}
-		}
-		if (p_colors.size() == 1) {
-			pline->triangle_colors = p_colors;
-			pline->line_colors = p_colors;
-		} else {
-			pline->triangle_colors.resize(pline->triangles.size());
-			pline->line_colors.resize(pline->lines.size());
-		}
-
-		for (int i = 0; i < p_points.size(); i++) {
-
-			Vector2 t;
-			if (i == p_points.size() - 1) {
-				t = prev_t;
-			} else {
-				t = (p_points[i + 1] - p_points[i]).normalized().tangent();
-				if (i == 0) {
-					prev_t = t;
-				}
-			}
-
-			Vector2 tangent = ((t + prev_t).normalized()) * p_width * 0.5;
-
-			if (p_antialiased) {
-				pline->lines[i] = p_points[i] + tangent;
-				pline->lines[p_points.size() * 2 - i - 1] = p_points[i] - tangent;
-				if (pline->line_colors.size() > 1) {
-					pline->line_colors[i] = p_colors[i];
-					pline->line_colors[p_points.size() * 2 - i - 1] = p_colors[i];
-				}
-			}
-
-			pline->triangles[i * 2 + 0] = p_points[i] + tangent;
-			pline->triangles[i * 2 + 1] = p_points[i] - tangent;
-
-			if (pline->triangle_colors.size() > 1) {
-
-				pline->triangle_colors[i * 2 + 0] = p_colors[i];
-				pline->triangle_colors[i * 2 + 1] = p_colors[i];
-			}
-
-			prev_t = t;
-		}
-	}
-#endif
 	canvas_item->rect_dirty = true;
 	canvas_item->commands.push_back(pline);
 }
@@ -801,7 +742,7 @@ void VisualServerCanvas::canvas_item_add_set_transform(RID p_item, const Transfo
 	canvas_item->commands.push_back(tr);
 }
 
-void VisualServerCanvas::canvas_item_add_mesh(RID p_item, const RID &p_mesh, RID p_skeleton) {
+void VisualServerCanvas::canvas_item_add_mesh(RID p_item, const RID &p_mesh, RID p_texture, RID p_normal_map) {
 
 	Item *canvas_item = canvas_item_owner.getornull(p_item);
 	ERR_FAIL_COND(!canvas_item);
@@ -809,7 +750,8 @@ void VisualServerCanvas::canvas_item_add_mesh(RID p_item, const RID &p_mesh, RID
 	Item::CommandMesh *m = memnew(Item::CommandMesh);
 	ERR_FAIL_COND(!m);
 	m->mesh = p_mesh;
-	m->skeleton = p_skeleton;
+	m->texture = p_texture;
+	m->normal_map = p_normal_map;
 
 	canvas_item->commands.push_back(m);
 }
@@ -833,7 +775,7 @@ void VisualServerCanvas::canvas_item_add_particles(RID p_item, RID p_particles, 
 	canvas_item->commands.push_back(part);
 }
 
-void VisualServerCanvas::canvas_item_add_multimesh(RID p_item, RID p_mesh, RID p_skeleton) {
+void VisualServerCanvas::canvas_item_add_multimesh(RID p_item, RID p_mesh, RID p_texture, RID p_normal_map) {
 
 	Item *canvas_item = canvas_item_owner.getornull(p_item);
 	ERR_FAIL_COND(!canvas_item);
@@ -841,7 +783,8 @@ void VisualServerCanvas::canvas_item_add_multimesh(RID p_item, RID p_mesh, RID p
 	Item::CommandMultiMesh *mm = memnew(Item::CommandMultiMesh);
 	ERR_FAIL_COND(!mm);
 	mm->multimesh = p_mesh;
-	mm->skeleton = p_skeleton;
+	mm->texture = p_texture;
+	mm->normal_map = p_normal_map;
 
 	canvas_item->rect_dirty = true;
 	canvas_item->commands.push_back(mm);
@@ -865,14 +808,14 @@ void VisualServerCanvas::canvas_item_set_sort_children_by_y(RID p_item, bool p_e
 
 	canvas_item->sort_y = p_enable;
 }
-void VisualServerCanvas::canvas_item_set_z(RID p_item, int p_z) {
+void VisualServerCanvas::canvas_item_set_z_index(RID p_item, int p_z) {
 
 	ERR_FAIL_COND(p_z < VS::CANVAS_ITEM_Z_MIN || p_z > VS::CANVAS_ITEM_Z_MAX);
 
 	Item *canvas_item = canvas_item_owner.getornull(p_item);
 	ERR_FAIL_COND(!canvas_item);
 
-	canvas_item->z = p_z;
+	canvas_item->z_index = p_z;
 }
 void VisualServerCanvas::canvas_item_set_z_as_relative_to_parent(RID p_item, bool p_enable) {
 
@@ -881,6 +824,15 @@ void VisualServerCanvas::canvas_item_set_z_as_relative_to_parent(RID p_item, boo
 
 	canvas_item->z_relative = p_enable;
 }
+
+void VisualServerCanvas::canvas_item_attach_skeleton(RID p_item, RID p_skeleton) {
+
+	Item *canvas_item = canvas_item_owner.getornull(p_item);
+	ERR_FAIL_COND(!canvas_item);
+
+	canvas_item->skeleton = p_skeleton;
+}
+
 void VisualServerCanvas::canvas_item_set_copy_to_backbuffer(RID p_item, bool p_enable, const Rect2 &p_rect) {
 
 	Item *canvas_item = canvas_item_owner.getornull(p_item);

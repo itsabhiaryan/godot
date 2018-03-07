@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "line_builder.h"
 
 //----------------------------------------------------------------------------
@@ -100,6 +101,7 @@ LineBuilder::LineBuilder() {
 	round_precision = 8;
 	begin_cap_mode = Line2D::LINE_CAP_NONE;
 	end_cap_mode = Line2D::LINE_CAP_NONE;
+	tile_aspect = 1.f;
 
 	_interpolate_color = false;
 	_last_index[0] = 0;
@@ -110,6 +112,7 @@ void LineBuilder::clear_output() {
 	vertices.clear();
 	colors.clear();
 	indices.clear();
+	uvs.clear();
 }
 
 void LineBuilder::build() {
@@ -119,6 +122,8 @@ void LineBuilder::build() {
 		clear_output();
 		return;
 	}
+
+	ERR_FAIL_COND(tile_aspect <= 0.f);
 
 	const float hw = width / 2.f;
 	const float hw_sq = hw * hw;
@@ -163,7 +168,7 @@ void LineBuilder::build() {
 		current_distance1 = current_distance0;
 	} else if (begin_cap_mode == Line2D::LINE_CAP_ROUND) {
 		if (texture_mode == Line2D::LINE_TEXTURE_TILE) {
-			uvx0 = 0.5f;
+			uvx0 = 0.5f / tile_aspect;
 		}
 		new_arc(pos0, pos_up0 - pos0, -Math_PI, color0, Rect2(0.f, 0.f, 1.f, 1.f));
 		total_distance += width;
@@ -285,8 +290,8 @@ void LineBuilder::build() {
 			color1 = gradient->get_color_at_offset(current_distance1 / total_distance);
 		}
 		if (texture_mode == Line2D::LINE_TEXTURE_TILE) {
-			uvx0 = current_distance0 / width;
-			uvx1 = current_distance1 / width;
+			uvx0 = current_distance0 / (width * tile_aspect);
+			uvx1 = current_distance1 / (width * tile_aspect);
 		}
 
 		strip_add_quad(pos_up1, pos_down1, color1, uvx1);
@@ -346,7 +351,7 @@ void LineBuilder::build() {
 			}
 
 			if (intersection_result != SEGMENT_INTERSECT)
-				// In this case the joint is too fucked up to be re-used,
+				// In this case the joint is too corrputed to be re-used,
 				// start again the strip with fallback points
 				strip_begin(pos_up0, pos_down0, color1, uvx1);
 		}
@@ -372,7 +377,7 @@ void LineBuilder::build() {
 		color1 = gradient->get_color(gradient->get_points_count() - 1);
 	}
 	if (texture_mode == Line2D::LINE_TEXTURE_TILE) {
-		uvx1 = current_distance1 / width;
+		uvx1 = current_distance1 / (width * tile_aspect);
 	}
 
 	strip_add_quad(pos_up1, pos_down1, color1, uvx1);

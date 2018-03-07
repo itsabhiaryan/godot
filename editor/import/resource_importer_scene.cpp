@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "resource_importer_scene.h"
 
 #include "editor/editor_node.h"
@@ -45,6 +46,7 @@
 #include "scene/resources/box_shape.h"
 #include "scene/resources/plane_shape.h"
 #include "scene/resources/ray_shape.h"
+#include "scene/resources/scene_format_text.h"
 #include "scene/resources/sphere_shape.h"
 
 uint32_t EditorSceneImporter::get_import_flags() const {
@@ -515,127 +517,7 @@ Node *ResourceImporterScene::_fix_node(Node *p_node, Node *p_root, Map<Ref<Array
 		s->set_transform(Transform());
 
 		p_node = bv;
-#if 0
-	} else if (_teststr(name, "room") && Object::cast_to<MeshInstance>(p_node)) {
 
-		if (isroot)
-			return p_node;
-
-		MeshInstance *mi = Object::cast_to<MeshInstance>(p_node);
-		PoolVector<Face3> faces = mi->get_faces(VisualInstance::FACES_SOLID);
-
-		BSP_Tree bsptree(faces);
-
-		Ref<RoomBounds> area = memnew(RoomBounds);
-		//area->set_bounds(faces);
-		//area->set_geometry_hint(faces);
-
-		Room *room = memnew(Room);
-		room->set_name(_fixstr(name, "room"));
-		room->set_transform(mi->get_transform());
-		room->set_room(area);
-
-		p_node->replace_by(room);
-		memdelete(p_node);
-		p_node = room;
-
-	} else if (_teststr(name, "room")) {
-
-		if (isroot)
-			return p_node;
-
-		Spatial *dummy = Object::cast_to<Spatial>(p_node);
-		ERR_FAIL_COND_V(!dummy, NULL);
-
-		Room *room = memnew(Room);
-		room->set_name(_fixstr(name, "room"));
-		room->set_transform(dummy->get_transform());
-
-		p_node->replace_by(room);
-		memdelete(p_node);
-		p_node = room;
-
-		//room->compute_room_from_subtree();
-
-	} else if (_teststr(name, "portal") && Object::cast_to<MeshInstance>(p_node)) {
-
-		if (isroot)
-			return p_node;
-
-		MeshInstance *mi = Object::cast_to<MeshInstance>(p_node);
-		PoolVector<Face3> faces = mi->get_faces(VisualInstance::FACES_SOLID);
-
-		ERR_FAIL_COND_V(faces.size() == 0, NULL);
-		//step 1 compute the plane
-		Set<Vector3> points;
-		Plane plane;
-
-		Vector3 center;
-
-		for (int i = 0; i < faces.size(); i++) {
-
-			Face3 f = faces.get(i);
-			Plane p = f.get_plane();
-			plane.normal += p.normal;
-			plane.d += p.d;
-
-			for (int i = 0; i < 3; i++) {
-
-				Vector3 v = f.vertex[i].snapped(Vector3(0.01, 0.01, 0.01));
-				if (!points.has(v)) {
-					points.insert(v);
-					center += v;
-				}
-			}
-		}
-
-		plane.normal.normalize();
-		plane.d /= faces.size();
-		center /= points.size();
-
-		//step 2, create points
-
-		Transform t;
-		t.basis.from_z(plane.normal);
-		t.basis.transpose();
-		t.origin = center;
-
-		Vector<Point2> portal_points;
-
-		for (Set<Vector3>::Element *E = points.front(); E; E = E->next()) {
-
-			Vector3 local = t.xform_inv(E->get());
-			portal_points.push_back(Point2(local.x, local.y));
-		}
-		// step 3 bubbly sort points
-
-		int swaps = 0;
-
-		do {
-			swaps = 0;
-
-			for (int i = 0; i < portal_points.size() - 1; i++) {
-
-				float a = portal_points[i].angle();
-				float b = portal_points[i + 1].angle();
-
-				if (a > b) {
-					SWAP(portal_points[i], portal_points[i + 1]);
-					swaps++;
-				}
-			}
-
-		} while (swaps);
-
-		Portal *portal = memnew(Portal);
-
-		portal->set_shape(portal_points);
-		portal->set_transform(mi->get_transform() * t);
-
-		p_node->replace_by(portal);
-		memdelete(p_node);
-		p_node = portal;
-#endif
 	} else if (Object::cast_to<MeshInstance>(p_node)) {
 
 		//last attempt, maybe collision inside the mesh data
@@ -969,15 +851,15 @@ void ResourceImporterScene::_find_meshes(Node *p_node, Map<Ref<ArrayMesh>, Trans
 
 		if (mesh.is_valid() && !meshes.has(mesh)) {
 			Spatial *s = mi;
-			while (s->get_parent_spatial()) {
+			Transform transform;
+			while (s) {
+				transform = transform * s->get_transform();
 				s = s->get_parent_spatial();
 			}
 
-			if (s == mi) {
-				meshes[mesh] = s->get_transform();
-			} else {
-				meshes[mesh] = s->get_transform() * mi->get_relative_transform(s);
-			}
+			meshes[mesh] = transform;
+
+			print_line("mesh transform: " + meshes[mesh]);
 		}
 	}
 	for (int i = 0; i < p_node->get_child_count(); i++) {
@@ -1157,6 +1039,7 @@ void ResourceImporterScene::get_import_options(List<ImportOption> *r_options, in
 	bool scenes_out = p_preset == PRESET_MULTIPLE_SCENES || p_preset == PRESET_MULTIPLE_SCENES_AND_MATERIALS;
 	bool animations_out = p_preset == PRESET_SEPARATE_ANIMATIONS || p_preset == PRESET_SEPARATE_MESHES_AND_ANIMATIONS || p_preset == PRESET_SEPARATE_MATERIALS_AND_ANIMATIONS || p_preset == PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS;
 
+	r_options->push_back(ImportOption(PropertyInfo(Variant::REAL, "nodes/root_scale", PROPERTY_HINT_RANGE, "0.001,1000,0.001"), 1.0));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::STRING, "nodes/custom_script", PROPERTY_HINT_FILE, script_ext_hint), ""));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "nodes/storage", PROPERTY_HINT_ENUM, "Single Scene,Instanced Sub-Scenes"), scenes_out ? 1 : 0));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "materials/location", PROPERTY_HINT_ENUM, "Node,Mesh"), (meshes_out || materials_out) ? 1 : 0));
@@ -1327,6 +1210,11 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 			memdelete(scene);
 			scene = base_node;
 		}
+	}
+
+	if (Object::cast_to<Spatial>(scene)) {
+		float root_scale = p_options["nodes/root_scale"];
+		Object::cast_to<Spatial>(scene)->scale(Vector3(root_scale, root_scale, root_scale));
 	}
 
 	scene->set_name(p_options["nodes/root_name"]);
@@ -1507,4 +1395,26 @@ ResourceImporterScene *ResourceImporterScene::singleton = NULL;
 
 ResourceImporterScene::ResourceImporterScene() {
 	singleton = this;
+}
+///////////////////////////////////////
+
+uint32_t EditorSceneImporterESCN::get_import_flags() const {
+	return IMPORT_SCENE;
+}
+void EditorSceneImporterESCN::get_extensions(List<String> *r_extensions) const {
+	r_extensions->push_back("escn");
+}
+Node *EditorSceneImporterESCN::import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps, Error *r_err) {
+
+	Error error;
+	Ref<PackedScene> ps = ResourceFormatLoaderText::singleton->load(p_path, p_path, &error);
+	ERR_FAIL_COND_V(!ps.is_valid(), NULL);
+
+	Node *scene = ps->instance();
+	ERR_FAIL_COND_V(!scene, NULL);
+
+	return scene;
+}
+Ref<Animation> EditorSceneImporterESCN::import_animation(const String &p_path, uint32_t p_flags, int p_bake_fps) {
+	ERR_FAIL_V(Ref<Animation>());
 }

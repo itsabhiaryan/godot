@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,24 +27,69 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "sprite.h"
 #include "core/core_string_names.h"
 #include "os/os.h"
 #include "scene/main/viewport.h"
 #include "scene/scene_string_names.h"
 
-void Sprite::_edit_set_pivot(const Point2 &p_pivot) {
+Dictionary Sprite::_edit_get_state() const {
+	Dictionary state = Node2D::_edit_get_state();
+	state["offset"] = offset;
+	return state;
+}
 
-	set_offset(p_pivot);
+void Sprite::_edit_set_state(const Dictionary &p_state) {
+	Node2D::_edit_set_state(p_state);
+	set_offset(p_state["offset"]);
+}
+
+void Sprite::_edit_set_pivot(const Point2 &p_pivot) {
+	set_offset(get_offset() - p_pivot);
+	set_position(get_transform().xform(p_pivot));
 }
 
 Point2 Sprite::_edit_get_pivot() const {
-
-	return get_offset();
+	return Vector2();
 }
-bool Sprite::_edit_use_pivot() const {
 
+bool Sprite::_edit_use_pivot() const {
 	return true;
+}
+
+void Sprite::_get_rects(Rect2 &r_src_rect, Rect2 &r_dst_rect, bool &r_filter_clip) const {
+
+	Size2 s;
+	r_filter_clip = false;
+
+	if (region) {
+
+		s = region_rect.size;
+		r_src_rect = region_rect;
+		r_filter_clip = region_filter_clip;
+	} else {
+		s = Size2(texture->get_size());
+		s = s / Size2(hframes, vframes);
+
+		r_src_rect.size = s;
+		r_src_rect.position.x = float(frame % hframes) * s.x;
+		r_src_rect.position.y = float(frame / hframes) * s.y;
+	}
+
+	Point2 ofs = offset;
+	if (centered)
+		ofs -= s / 2;
+	if (Engine::get_singleton()->get_use_pixel_snap()) {
+		ofs = ofs.floor();
+	}
+
+	r_dst_rect = Rect2(ofs, s);
+
+	if (hflip)
+		r_dst_rect.size.x = -r_dst_rect.size.x;
+	if (vflip)
+		r_dst_rect.size.y = -r_dst_rect.size.y;
 }
 
 void Sprite::_notification(int p_what) {
@@ -63,38 +108,9 @@ void Sprite::_notification(int p_what) {
 			break;
 			*/
 
-			Size2 s;
-			Rect2 src_rect;
-			bool filter_clip = false;
-
-			if (region) {
-
-				s = region_rect.size;
-				src_rect = region_rect;
-				filter_clip = region_filter_clip;
-			} else {
-				s = Size2(texture->get_size());
-				s = s / Size2(hframes, vframes);
-
-				src_rect.size = s;
-				src_rect.position.x += float(frame % hframes) * s.x;
-				src_rect.position.y += float(frame / hframes) * s.y;
-			}
-
-			Point2 ofs = offset;
-			if (centered)
-				ofs -= s / 2;
-			if (Engine::get_singleton()->get_use_pixel_snap()) {
-				ofs = ofs.floor();
-			}
-
-			Rect2 dst_rect(ofs, s);
-
-			if (hflip)
-				dst_rect.size.x = -dst_rect.size.x;
-			if (vflip)
-				dst_rect.size.y = -dst_rect.size.y;
-
+			Rect2 src_rect, dst_rect;
+			bool filter_clip;
+			_get_rects(src_rect, dst_rect, filter_clip);
 			texture->draw_rect_region(ci, dst_rect, src_rect, Color(1, 1, 1), false, normal_map, filter_clip);
 
 		} break;
@@ -257,7 +273,31 @@ int Sprite::get_hframes() const {
 	return hframes;
 }
 
-Rect2 Sprite::_edit_get_rect() const {
+bool Sprite::_edit_is_selected_on_click(const Point2 &p_point, double p_tolerance) const {
+
+	if (texture.is_null())
+		return false;
+
+	Rect2 src_rect, dst_rect;
+	bool filter_clip;
+	_get_rects(src_rect, dst_rect, filter_clip);
+
+	if (!dst_rect.has_point(p_point))
+		return false;
+
+	Vector2 q = ((p_point - dst_rect.position) / dst_rect.size) * src_rect.size + src_rect.position;
+
+	Ref<Image> image = texture->get_data();
+	ERR_FAIL_COND_V(image.is_null(), false);
+
+	image->lock();
+	const Color c = image->get_pixel((int)q.x, (int)q.y);
+	image->unlock();
+
+	return c.a > 0.01;
+}
+
+Rect2 Sprite::get_rect() const {
 
 	if (texture.is_null())
 		return Rect2(0, 0, 1, 1);
@@ -333,6 +373,8 @@ void Sprite::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_hframes", "hframes"), &Sprite::set_hframes);
 	ClassDB::bind_method(D_METHOD("get_hframes"), &Sprite::get_hframes);
+
+	ClassDB::bind_method(D_METHOD("get_rect"), &Sprite::get_rect);
 
 	ADD_SIGNAL(MethodInfo("frame_changed"));
 	ADD_SIGNAL(MethodInfo("texture_changed"));

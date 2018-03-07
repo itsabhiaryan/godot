@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef CORE_BIND_H
 #define CORE_BIND_H
 
@@ -145,6 +146,12 @@ public:
 	bool is_video_mode_resizable(int p_screen = 0) const;
 	Array get_fullscreen_mode_list(int p_screen = 0) const;
 
+	virtual int get_video_driver_count() const;
+	virtual String get_video_driver_name(int p_driver) const;
+
+	virtual int get_audio_driver_count() const;
+	virtual String get_audio_driver_name(int p_driver) const;
+
 	virtual int get_screen_count() const;
 	virtual int get_current_screen() const;
 	virtual void set_current_screen(int p_screen);
@@ -154,6 +161,7 @@ public:
 	virtual Point2 get_window_position() const;
 	virtual void set_window_position(const Point2 &p_position);
 	virtual Size2 get_window_size() const;
+	virtual Size2 get_real_window_size() const;
 	virtual void set_window_size(const Size2 &p_size);
 	virtual void set_window_fullscreen(bool p_enabled);
 	virtual bool is_window_fullscreen() const;
@@ -163,7 +171,10 @@ public:
 	virtual bool is_window_minimized() const;
 	virtual void set_window_maximized(bool p_enabled);
 	virtual bool is_window_maximized() const;
+	virtual void set_window_always_on_top(bool p_enabled);
+	virtual bool is_window_always_on_top() const;
 	virtual void request_attention();
+	virtual void center_window();
 
 	virtual void set_borderless_window(bool p_borderless);
 	virtual bool get_borderless_window() const;
@@ -655,7 +666,7 @@ public:
 	int get_iterations_per_second() const;
 
 	void set_target_fps(int p_fps);
-	float get_target_fps() const;
+	int get_target_fps() const;
 
 	float get_frames_per_second() const;
 

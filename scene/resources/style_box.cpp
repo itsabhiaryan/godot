@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "style_box.h"
 #include <limits.h>
 
@@ -100,7 +101,7 @@ StyleBox::StyleBox() {
 	}
 }
 
-void StyleBoxTexture::set_texture(RES p_texture) {
+void StyleBoxTexture::set_texture(Ref<Texture> p_texture) {
 
 	if (texture == p_texture)
 		return;
@@ -111,12 +112,12 @@ void StyleBoxTexture::set_texture(RES p_texture) {
 	_change_notify("texture");
 }
 
-RES StyleBoxTexture::get_texture() const {
+Ref<Texture> StyleBoxTexture::get_texture() const {
 
 	return texture;
 }
 
-void StyleBoxTexture::set_normal_map(RES p_normal_map) {
+void StyleBoxTexture::set_normal_map(Ref<Texture> p_normal_map) {
 
 	if (normal_map == p_normal_map)
 		return;
@@ -124,7 +125,7 @@ void StyleBoxTexture::set_normal_map(RES p_normal_map) {
 	emit_changed();
 }
 
-RES StyleBoxTexture::get_normal_map() const {
+Ref<Texture> StyleBoxTexture::get_normal_map() const {
 
 	return normal_map;
 }
@@ -649,14 +650,14 @@ void StyleBoxFlat::draw(RID p_canvas_item, const Rect2 &p_rect) const {
 		style_rect = style_rect.grow(-((aa_size + 1) / 2));
 	}
 
-	//adapt borders (prevent weired overlapping/glitchy drawings)
-	int width = style_rect.size.width;
-	int height = style_rect.size.height;
+	//adapt borders (prevent weird overlapping/glitchy drawings)
+	int width = MAX(style_rect.size.width, 0);
+	int height = MAX(style_rect.size.height, 0);
 	int adapted_border[4] = { INT_MAX, INT_MAX, INT_MAX, INT_MAX };
 	adapt_values(MARGIN_TOP, MARGIN_BOTTOM, adapted_border, border_width, height, height, height);
 	adapt_values(MARGIN_LEFT, MARGIN_RIGHT, adapted_border, border_width, width, width, width);
 
-	//adapt corners (prevent weired overlapping/glitchy drawings)
+	//adapt corners (prevent weird overlapping/glitchy drawings)
 	int adapted_corner[4] = { INT_MAX, INT_MAX, INT_MAX, INT_MAX };
 	adapt_values(CORNER_TOP_RIGHT, CORNER_BOTTOM_RIGHT, adapted_corner, corner_radius, height, height - adapted_border[MARGIN_BOTTOM], height - adapted_border[MARGIN_TOP]);
 	adapt_values(CORNER_TOP_LEFT, CORNER_BOTTOM_LEFT, adapted_corner, corner_radius, height, height - adapted_border[MARGIN_BOTTOM], height - adapted_border[MARGIN_TOP]);
@@ -911,6 +912,7 @@ void StyleBoxLine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_vertical"), &StyleBoxLine::is_vertical);
 
 	ADD_PROPERTY(PropertyInfo(Variant::COLOR, "color"), "set_color", "get_color");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "grow", PROPERTY_HINT_RANGE, "-300,300,1"), "set_grow", "get_grow");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "thickness", PROPERTY_HINT_RANGE, "0,10"), "set_thickness", "get_thickness");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "vertical"), "set_vertical", "is_vertical");
 }

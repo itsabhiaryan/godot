@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef COMMAND_QUEUE_MT_H
 #define COMMAND_QUEUE_MT_H
 
@@ -54,7 +55,7 @@
 #define _COMMA_11 ,
 #define _COMMA_12 ,
 
-// 1-based comma separed list of ITEMs
+// 1-based comma separated list of ITEMs
 #define COMMA_SEP_LIST(ITEM, LENGTH) _COMMA_SEP_LIST_##LENGTH(ITEM)
 #define _COMMA_SEP_LIST_12(ITEM) \
 	_COMMA_SEP_LIST_11(ITEM)     \
@@ -94,7 +95,7 @@
 	ITEM(1)
 #define _COMMA_SEP_LIST_0(ITEM)
 
-// 1-based semicolon separed list of ITEMs
+// 1-based semicolon separated list of ITEMs
 #define SEMIC_SEP_LIST(ITEM, LENGTH) _SEMIC_SEP_LIST_##LENGTH(ITEM)
 #define _SEMIC_SEP_LIST_12(ITEM) \
 	_SEMIC_SEP_LIST_11(ITEM);    \
@@ -134,7 +135,7 @@
 	ITEM(1)
 #define _SEMIC_SEP_LIST_0(ITEM)
 
-// 1-based space separed list of ITEMs
+// 1-based space separated list of ITEMs
 #define SPACE_SEP_LIST(ITEM, LENGTH) _SPACE_SEP_LIST_##LENGTH(ITEM)
 #define _SPACE_SEP_LIST_12(ITEM) \
 	_SPACE_SEP_LIST_11(ITEM)     \
@@ -308,9 +309,9 @@ class CommandQueueMT {
 	};
 
 	uint8_t command_mem[COMMAND_MEM_SIZE];
-	uint32_t read_ptr;
-	uint32_t write_ptr;
-	uint32_t dealloc_ptr;
+	uint32_t read_ptr = 0;
+	uint32_t write_ptr = 0;
+	uint32_t dealloc_ptr = 0;
 	SyncSemaphore sync_sems[SYNC_SEMAPHORES];
 	Mutex *mutex;
 	Semaphore *sync;

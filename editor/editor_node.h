@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef EDITOR_NODE_H
 #define EDITOR_NODE_H
 
@@ -595,7 +596,6 @@ private:
 	static EditorPluginInitializeCallback plugin_init_callbacks[MAX_INIT_CALLBACKS];
 	void _save_default_environment();
 
-	bool _call_build();
 	static int build_callback_count;
 	static EditorBuildCallback build_callbacks[MAX_BUILD_CALLBACKS];
 
@@ -633,6 +633,8 @@ protected:
 	static void _bind_methods();
 
 public:
+	bool call_build();
+
 	static void add_plugin_init_callback(EditorPluginInitializeCallback p_callback);
 
 	enum EditorTable {
@@ -651,6 +653,8 @@ public:
 	EditorPluginList *get_editor_plugins_force_input_forwarding() { return editor_plugins_force_input_forwarding; }
 	PropertyEditor *get_property_editor() { return property_editor; }
 	VBoxContainer *get_property_editor_vb() { return prop_editor_vb; }
+
+	ProjectSettingsEditor *get_project_settings() { return project_settings; }
 
 	static void add_editor_plugin(EditorPlugin *p_editor);
 	static void remove_editor_plugin(EditorPlugin *p_editor);

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "core_bind.h"
 
 #include "core/project_settings.h"
@@ -70,7 +71,13 @@ Ref<ResourceInteractiveLoader> _ResourceLoader::load_interactive(const String &p
 
 RES _ResourceLoader::load(const String &p_path, const String &p_type_hint, bool p_no_cache) {
 
-	RES ret = ResourceLoader::load(p_path, p_type_hint, p_no_cache);
+	Error err = OK;
+	RES ret = ResourceLoader::load(p_path, p_type_hint, p_no_cache, &err);
+
+	if (err != OK) {
+		ERR_EXPLAIN("Error loading resource: '" + p_path + "'");
+		ERR_FAIL_COND_V(err != OK, ret);
+	}
 	return ret;
 }
 
@@ -198,6 +205,22 @@ String _OS::get_clipboard() const {
 	return OS::get_singleton()->get_clipboard();
 }
 
+int _OS::get_video_driver_count() const {
+	return OS::get_singleton()->get_video_driver_count();
+}
+
+String _OS::get_video_driver_name(int p_driver) const {
+	return OS::get_singleton()->get_video_driver_name(p_driver);
+}
+
+int _OS::get_audio_driver_count() const {
+	return OS::get_singleton()->get_audio_driver_count();
+}
+
+String _OS::get_audio_driver_name(int p_driver) const {
+	return OS::get_singleton()->get_audio_driver_name(p_driver);
+}
+
 void _OS::set_video_mode(const Size2 &p_size, bool p_fullscreen, bool p_resizeable, int p_screen) {
 
 	OS::VideoMode vm;
@@ -257,6 +280,10 @@ Size2 _OS::get_window_size() const {
 	return OS::get_singleton()->get_window_size();
 }
 
+Size2 _OS::get_real_window_size() const {
+	return OS::get_singleton()->get_real_window_size();
+}
+
 void _OS::set_window_size(const Size2 &p_size) {
 	OS::get_singleton()->set_window_size(p_size);
 }
@@ -291,6 +318,14 @@ void _OS::set_window_maximized(bool p_enabled) {
 
 bool _OS::is_window_maximized() const {
 	return OS::get_singleton()->is_window_maximized();
+}
+
+void _OS::set_window_always_on_top(bool p_enabled) {
+	OS::get_singleton()->set_window_always_on_top(p_enabled);
+}
+
+bool _OS::is_window_always_on_top() const {
+	return OS::get_singleton()->is_window_always_on_top();
 }
 
 void _OS::set_borderless_window(bool p_borderless) {
@@ -922,6 +957,11 @@ void _OS::request_attention() {
 	OS::get_singleton()->request_attention();
 }
 
+void _OS::center_window() {
+
+	OS::get_singleton()->center_window();
+}
+
 bool _OS::is_debug_build() const {
 
 #ifdef DEBUG_ENABLED
@@ -991,6 +1031,11 @@ void _OS::_bind_methods() {
 	//ClassDB::bind_method(D_METHOD("is_video_mode_resizable","screen"),&_OS::is_video_mode_resizable,DEFVAL(0));
 	//ClassDB::bind_method(D_METHOD("get_fullscreen_mode_list","screen"),&_OS::get_fullscreen_mode_list,DEFVAL(0));
 
+	ClassDB::bind_method(D_METHOD("get_video_driver_count"), &_OS::get_video_driver_count);
+	ClassDB::bind_method(D_METHOD("get_video_driver_name"), &_OS::get_video_driver_name);
+	ClassDB::bind_method(D_METHOD("get_audio_driver_count"), &_OS::get_audio_driver_count);
+	ClassDB::bind_method(D_METHOD("get_audio_driver_name"), &_OS::get_audio_driver_name);
+
 	ClassDB::bind_method(D_METHOD("get_screen_count"), &_OS::get_screen_count);
 	ClassDB::bind_method(D_METHOD("get_current_screen"), &_OS::get_current_screen);
 	ClassDB::bind_method(D_METHOD("set_current_screen", "screen"), &_OS::set_current_screen);
@@ -1009,7 +1054,11 @@ void _OS::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_window_minimized"), &_OS::is_window_minimized);
 	ClassDB::bind_method(D_METHOD("set_window_maximized", "enabled"), &_OS::set_window_maximized);
 	ClassDB::bind_method(D_METHOD("is_window_maximized"), &_OS::is_window_maximized);
+	ClassDB::bind_method(D_METHOD("set_window_always_on_top", "enabled"), &_OS::set_window_always_on_top);
+	ClassDB::bind_method(D_METHOD("is_window_always_on_top"), &_OS::is_window_always_on_top);
 	ClassDB::bind_method(D_METHOD("request_attention"), &_OS::request_attention);
+	ClassDB::bind_method(D_METHOD("get_real_window_size"), &_OS::get_real_window_size);
+	ClassDB::bind_method(D_METHOD("center_window"), &_OS::center_window);
 
 	ClassDB::bind_method(D_METHOD("set_borderless_window", "borderless"), &_OS::set_borderless_window);
 	ClassDB::bind_method(D_METHOD("get_borderless_window"), &_OS::get_borderless_window);
@@ -1121,6 +1170,22 @@ void _OS::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_power_state"), &_OS::get_power_state);
 	ClassDB::bind_method(D_METHOD("get_power_seconds_left"), &_OS::get_power_seconds_left);
 	ClassDB::bind_method(D_METHOD("get_power_percent_left"), &_OS::get_power_percent_left);
+
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "clipboard"), "set_clipboard", "get_clipboard");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "current_screen"), "set_current_screen", "get_current_screen");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "exit_code"), "set_exit_code", "get_exit_code");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "vsync_enabled"), "set_use_vsync", "is_vsync_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "low_processor_usage_mode"), "set_low_processor_usage_mode", "is_in_low_processor_usage_mode");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "keep_screen_on"), "set_keep_screen_on", "is_keep_screen_on");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "screen_orientation", PROPERTY_HINT_ENUM, "Landscape,Portrait,Reverse Landscape,Reverse Portrait,Sensor Landscape,Sensor Portrait,Sensor"), "set_screen_orientation", "get_screen_orientation");
+	ADD_GROUP("Window", "window_");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "window_borderless"), "set_borderless_window", "get_borderless_window");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "window_fullscreen"), "set_window_fullscreen", "is_window_fullscreen");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "window_maximized"), "set_window_maximized", "is_window_maximized");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "window_minimized"), "set_window_minimized", "is_window_minimized");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "window_resizable"), "set_window_resizable", "is_window_resizable");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "window_position"), "set_window_position", "get_window_position");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "window_size"), "set_window_size", "get_window_size");
 
 	BIND_ENUM_CONSTANT(DAY_SUNDAY);
 	BIND_ENUM_CONSTANT(DAY_MONDAY);
@@ -1801,6 +1866,8 @@ void _File::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("file_exists", "path"), &_File::file_exists);
 	ClassDB::bind_method(D_METHOD("get_modified_time", "file"), &_File::get_modified_time);
 
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "endian_swap"), "set_endian_swap", "get_endian_swap");
+
 	BIND_ENUM_CONSTANT(READ);
 	BIND_ENUM_CONSTANT(WRITE);
 	BIND_ENUM_CONSTANT(READ_WRITE);
@@ -2459,7 +2526,13 @@ Array _ClassDB::get_method_list(StringName p_class, bool p_no_inheritance) const
 	Array ret;
 
 	for (List<MethodInfo>::Element *E = methods.front(); E; E = E->next()) {
+#ifdef DEBUG_METHODS_ENABLED
 		ret.push_back(E->get().operator Dictionary());
+#else
+		Dictionary dict;
+		dict["name"] = E->get().name;
+		ret.push_back(dict);
+#endif
 	}
 
 	return ret;
@@ -2554,7 +2627,7 @@ void _Engine::set_target_fps(int p_fps) {
 	Engine::get_singleton()->set_target_fps(p_fps);
 }
 
-float _Engine::get_target_fps() const {
+int _Engine::get_target_fps() const {
 	return Engine::get_singleton()->get_target_fps();
 }
 
@@ -2636,6 +2709,11 @@ void _Engine::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_editor_hint", "enabled"), &_Engine::set_editor_hint);
 	ClassDB::bind_method(D_METHOD("is_editor_hint"), &_Engine::is_editor_hint);
+
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "editor_hint"), "set_editor_hint", "is_editor_hint");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations_per_second"), "set_iterations_per_second", "get_iterations_per_second");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "target_fps"), "set_target_fps", "get_target_fps");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "time_scale"), "set_time_scale", "get_time_scale");
 }
 
 _Engine *_Engine::singleton = NULL;

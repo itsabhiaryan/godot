@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "variant.h"
 
 #include "core_string_names.h"
@@ -101,9 +102,10 @@ struct _VariantCall {
 				const Variant *newargs[VARIANT_ARG_MAX];
 				for (int i = 0; i < p_argcount; i++)
 					newargs[i] = p_args[i];
-				int defargcount = def_argcount;
+				// fill in any remaining parameters with defaults
+				int first_default_arg = arg_count - def_argcount;
 				for (int i = p_argcount; i < arg_count; i++)
-					newargs[i] = &default_args[defargcount - (i - p_argcount) - 1]; //default arguments
+					newargs[i] = &default_args[i - first_default_arg];
 #ifdef DEBUG_ENABLED
 				if (!verify_arguments(newargs, r_error))
 					return;
@@ -254,7 +256,7 @@ struct _VariantCall {
 	VCALL_LOCALMEM2R(String, replacen);
 	VCALL_LOCALMEM2R(String, insert);
 	VCALL_LOCALMEM0R(String, capitalize);
-	VCALL_LOCALMEM2R(String, split);
+	VCALL_LOCALMEM3R(String, split);
 	VCALL_LOCALMEM2R(String, split_floats);
 	VCALL_LOCALMEM0R(String, to_upper);
 	VCALL_LOCALMEM0R(String, to_lower);
@@ -441,6 +443,7 @@ struct _VariantCall {
 	VCALL_LOCALMEM1R(Color, lightened);
 	VCALL_LOCALMEM1R(Color, darkened);
 	VCALL_LOCALMEM1R(Color, to_html);
+	VCALL_LOCALMEM4R(Color, from_hsv);
 
 	VCALL_LOCALMEM0R(RID, get_id);
 
@@ -462,6 +465,7 @@ struct _VariantCall {
 	VCALL_LOCALMEM0R(Dictionary, hash);
 	VCALL_LOCALMEM0R(Dictionary, keys);
 	VCALL_LOCALMEM0R(Dictionary, values);
+	VCALL_LOCALMEM0R(Dictionary, duplicate);
 
 	VCALL_LOCALMEM2(Array, set);
 	VCALL_LOCALMEM1R(Array, get);
@@ -487,6 +491,7 @@ struct _VariantCall {
 	VCALL_LOCALMEM1(Array, erase);
 	VCALL_LOCALMEM0(Array, sort);
 	VCALL_LOCALMEM2(Array, sort_custom);
+	VCALL_LOCALMEM0(Array, shuffle);
 	VCALL_LOCALMEM2R(Array, bsearch);
 	VCALL_LOCALMEM4R(Array, bsearch_custom);
 	VCALL_LOCALMEM0R(Array, duplicate);
@@ -1446,7 +1451,7 @@ void register_variant_methods() {
 	ADDFUNC2R(STRING, STRING, String, replacen, STRING, "what", STRING, "forwhat", varray());
 	ADDFUNC2R(STRING, STRING, String, insert, INT, "position", STRING, "what", varray());
 	ADDFUNC0R(STRING, STRING, String, capitalize, varray());
-	ADDFUNC2R(STRING, POOL_STRING_ARRAY, String, split, STRING, "divisor", BOOL, "allow_empty", varray(true));
+	ADDFUNC3R(STRING, POOL_STRING_ARRAY, String, split, STRING, "divisor", BOOL, "allow_empty", INT, "maxsplit", varray(true, 0));
 	ADDFUNC2R(STRING, POOL_REAL_ARRAY, String, split_floats, STRING, "divisor", BOOL, "allow_empty", varray(true));
 
 	ADDFUNC0R(STRING, STRING, String, to_upper, varray());
@@ -1536,7 +1541,7 @@ void register_variant_methods() {
 	ADDFUNC0R(VECTOR3, BOOL, Vector3, is_normalized, varray());
 	ADDFUNC0R(VECTOR3, VECTOR3, Vector3, normalized, varray());
 	ADDFUNC0R(VECTOR3, VECTOR3, Vector3, inverse, varray());
-	ADDFUNC1R(VECTOR3, VECTOR3, Vector3, snapped, REAL, "by", varray());
+	ADDFUNC1R(VECTOR3, VECTOR3, Vector3, snapped, VECTOR3, "by", varray());
 	ADDFUNC2R(VECTOR3, VECTOR3, Vector3, rotated, VECTOR3, "axis", REAL, "phi", varray());
 	ADDFUNC2R(VECTOR3, VECTOR3, Vector3, linear_interpolate, VECTOR3, "b", REAL, "t", varray());
 	ADDFUNC4R(VECTOR3, VECTOR3, Vector3, cubic_interpolate, VECTOR3, "b", VECTOR3, "pre_a", VECTOR3, "post_b", REAL, "t", varray());
@@ -1586,6 +1591,7 @@ void register_variant_methods() {
 	ADDFUNC1R(COLOR, COLOR, Color, lightened, REAL, "amount", varray());
 	ADDFUNC1R(COLOR, COLOR, Color, darkened, REAL, "amount", varray());
 	ADDFUNC1R(COLOR, STRING, Color, to_html, BOOL, "with_alpha", varray(true));
+	ADDFUNC4R(COLOR, COLOR, Color, from_hsv, REAL, "h", REAL, "s", REAL, "v", REAL, "a", varray(1.0));
 
 	ADDFUNC0R(_RID, INT, RID, get_id, varray());
 
@@ -1607,6 +1613,7 @@ void register_variant_methods() {
 	ADDFUNC0R(DICTIONARY, INT, Dictionary, hash, varray());
 	ADDFUNC0R(DICTIONARY, ARRAY, Dictionary, keys, varray());
 	ADDFUNC0R(DICTIONARY, ARRAY, Dictionary, values, varray());
+	ADDFUNC0R(DICTIONARY, DICTIONARY, Dictionary, duplicate, varray());
 
 	ADDFUNC0R(ARRAY, INT, Array, size, varray());
 	ADDFUNC0R(ARRAY, BOOL, Array, empty, varray());
@@ -1630,6 +1637,7 @@ void register_variant_methods() {
 	ADDFUNC0RNC(ARRAY, NIL, Array, pop_front, varray());
 	ADDFUNC0NC(ARRAY, NIL, Array, sort, varray());
 	ADDFUNC2NC(ARRAY, NIL, Array, sort_custom, OBJECT, "obj", STRING, "func", varray());
+	ADDFUNC0NC(ARRAY, NIL, Array, shuffle, varray());
 	ADDFUNC2R(ARRAY, INT, Array, bsearch, NIL, "value", BOOL, "before", varray(true));
 	ADDFUNC4R(ARRAY, INT, Array, bsearch_custom, NIL, "value", OBJECT, "obj", STRING, "func", BOOL, "before", varray(true));
 	ADDFUNC0NC(ARRAY, NIL, Array, invert, varray());
@@ -1744,10 +1752,10 @@ void register_variant_methods() {
 	ADDFUNC1R(TRANSFORM2D, TRANSFORM2D, Transform2D, rotated, REAL, "phi", varray());
 	ADDFUNC1R(TRANSFORM2D, TRANSFORM2D, Transform2D, scaled, VECTOR2, "scale", varray());
 	ADDFUNC1R(TRANSFORM2D, TRANSFORM2D, Transform2D, translated, VECTOR2, "offset", varray());
-	ADDFUNC1R(TRANSFORM2D, TRANSFORM2D, Transform2D, xform, NIL, "v", varray());
-	ADDFUNC1R(TRANSFORM2D, TRANSFORM2D, Transform2D, xform_inv, NIL, "v", varray());
-	ADDFUNC1R(TRANSFORM2D, TRANSFORM2D, Transform2D, basis_xform, NIL, "v", varray());
-	ADDFUNC1R(TRANSFORM2D, TRANSFORM2D, Transform2D, basis_xform_inv, NIL, "v", varray());
+	ADDFUNC1R(TRANSFORM2D, NIL, Transform2D, xform, NIL, "v", varray());
+	ADDFUNC1R(TRANSFORM2D, NIL, Transform2D, xform_inv, NIL, "v", varray());
+	ADDFUNC1R(TRANSFORM2D, VECTOR2, Transform2D, basis_xform, VECTOR2, "v", varray());
+	ADDFUNC1R(TRANSFORM2D, VECTOR2, Transform2D, basis_xform_inv, VECTOR2, "v", varray());
 	ADDFUNC2R(TRANSFORM2D, TRANSFORM2D, Transform2D, interpolate_with, TRANSFORM2D, "transform", REAL, "weight", varray());
 
 	ADDFUNC0R(BASIS, BASIS, Basis, inverse, varray());

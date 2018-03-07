@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "resource_importer_obj.h"
 
 #include "io/resource_saver.h"
@@ -187,7 +188,7 @@ static Error _parse_material_library(const String &p_path, Map<String, Ref<Spati
 	return OK;
 }
 
-static Error _parse_obj(const String &p_path, List<Ref<Mesh> > &r_meshes, bool p_single_mesh, bool p_generate_tangents, List<String> *r_missing_deps) {
+static Error _parse_obj(const String &p_path, List<Ref<Mesh> > &r_meshes, bool p_single_mesh, bool p_generate_tangents, Vector3 p_scale_mesh, List<String> *r_missing_deps) {
 
 	FileAccessRef f = FileAccess::open(p_path, FileAccess::READ);
 
@@ -197,6 +198,7 @@ static Error _parse_obj(const String &p_path, List<Ref<Mesh> > &r_meshes, bool p
 	mesh.instance();
 
 	bool generate_tangents = p_generate_tangents;
+	Vector3 scale_mesh = p_scale_mesh;
 	bool flip_faces = false;
 	//bool flip_faces = p_options["force/flip_faces"];
 	//bool force_smooth = p_options["force/smooth_shading"];
@@ -226,9 +228,9 @@ static Error _parse_obj(const String &p_path, List<Ref<Mesh> > &r_meshes, bool p
 			Vector<String> v = l.split(" ", false);
 			ERR_FAIL_COND_V(v.size() < 4, ERR_FILE_CORRUPT);
 			Vector3 vtx;
-			vtx.x = v[1].to_float();
-			vtx.y = v[2].to_float();
-			vtx.z = v[3].to_float();
+			vtx.x = v[1].to_float() * scale_mesh.x;
+			vtx.y = v[2].to_float() * scale_mesh.y;
+			vtx.z = v[3].to_float() * scale_mesh.z;
 			vertices.push_back(vtx);
 		} else if (l.begins_with("vt ")) {
 			//uv
@@ -400,7 +402,7 @@ Node *EditorOBJImporter::import_scene(const String &p_path, uint32_t p_flags, in
 
 	List<Ref<Mesh> > meshes;
 
-	Error err = _parse_obj(p_path, meshes, false, p_flags & IMPORT_GENERATE_TANGENT_ARRAYS, r_missing_deps);
+	Error err = _parse_obj(p_path, meshes, false, p_flags & IMPORT_GENERATE_TANGENT_ARRAYS, Vector3(1, 1, 1), r_missing_deps);
 
 	if (err != OK) {
 		if (r_err) {
@@ -467,6 +469,7 @@ String ResourceImporterOBJ::get_preset_name(int p_idx) const {
 void ResourceImporterOBJ::get_import_options(List<ImportOption> *r_options, int p_preset) const {
 
 	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "generate_tangents"), true));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::VECTOR3, "scale_mesh"), Vector3(1, 1, 1)));
 }
 bool ResourceImporterOBJ::get_option_visibility(const String &p_option, const Map<StringName, Variant> &p_options) const {
 
@@ -477,7 +480,7 @@ Error ResourceImporterOBJ::import(const String &p_source_file, const String &p_s
 
 	List<Ref<Mesh> > meshes;
 
-	Error err = _parse_obj(p_source_file, meshes, true, p_options["generate_tangents"], NULL);
+	Error err = _parse_obj(p_source_file, meshes, true, p_options["generate_tangents"], p_options["scale_mesh"], NULL);
 
 	ERR_FAIL_COND_V(err != OK, err);
 	ERR_FAIL_COND_V(meshes.size() != 1, ERR_BUG);

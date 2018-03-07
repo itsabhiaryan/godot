@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef VISUAL_SERVER_RASTER_H
 #define VISUAL_SERVER_RASTER_H
 
@@ -384,6 +385,7 @@ public:
 	BIND0R(RID, particles_create)
 
 	BIND2(particles_set_emitting, RID, bool)
+	BIND1R(bool, particles_get_emitting, RID)
 	BIND2(particles_set_amount, RID, int)
 	BIND2(particles_set_lifetime, RID, float)
 	BIND2(particles_set_one_shot, RID, bool)
@@ -579,15 +581,16 @@ public:
 	BIND7(canvas_item_add_primitive, RID, const Vector<Point2> &, const Vector<Color> &, const Vector<Point2> &, RID, float, RID)
 	BIND7(canvas_item_add_polygon, RID, const Vector<Point2> &, const Vector<Color> &, const Vector<Point2> &, RID, RID, bool)
 	BIND8(canvas_item_add_triangle_array, RID, const Vector<int> &, const Vector<Point2> &, const Vector<Color> &, const Vector<Point2> &, RID, int, RID)
-	BIND3(canvas_item_add_mesh, RID, const RID &, RID)
-	BIND3(canvas_item_add_multimesh, RID, RID, RID)
+	BIND4(canvas_item_add_mesh, RID, const RID &, RID, RID)
+	BIND4(canvas_item_add_multimesh, RID, RID, RID, RID)
 	BIND6(canvas_item_add_particles, RID, RID, RID, RID, int, int)
 	BIND2(canvas_item_add_set_transform, RID, const Transform2D &)
 	BIND2(canvas_item_add_clip_ignore, RID, bool)
 	BIND2(canvas_item_set_sort_children_by_y, RID, bool)
-	BIND2(canvas_item_set_z, RID, int)
+	BIND2(canvas_item_set_z_index, RID, int)
 	BIND2(canvas_item_set_z_as_relative_to_parent, RID, bool)
 	BIND3(canvas_item_set_copy_to_backbuffer, RID, bool, const Rect2 &)
+	BIND2(canvas_item_attach_skeleton, RID, RID)
 
 	BIND1(canvas_item_clear, RID)
 	BIND2(canvas_item_set_draw_index, RID, int)
@@ -667,6 +670,8 @@ public:
 
 	virtual bool has_os_feature(const String &p_feature) const;
 	virtual void set_debug_generate_wireframes(bool p_generate);
+
+	virtual void call_set_use_vsync(bool p_enable);
 
 	VisualServerRaster();
 	~VisualServerRaster();

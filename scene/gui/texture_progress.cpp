@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "texture_progress.h"
 
 #include "engine.h"
@@ -157,7 +158,7 @@ void TextureProgress::draw_nine_patch_stretched(const Ref<Texture> &p_texture, F
 	if (p_ratio < 1.0) {
 		// Drawing a partially-filled 9-patch is a little tricky -
 		// texture is divided by 3 sections toward fill direction,
-		// then middle section is streching while the other two aren't.
+		// then middle section is stretching while the other two aren't.
 
 		double width_total = 0.0;
 		double width_texture = 0.0;

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,11 +27,20 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "translation.h"
 
 #include "io/resource_loader.h"
 #include "os/os.h"
 #include "project_settings.h"
+
+// ISO 639-1 language codes, with the addition of glibc locales with their
+// regional identifiers. This list must match the language names (in English)
+// of locale_names.
+//
+// References:
+// - https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
+// - https://lh.2xlibre.net/locales/
 
 static const char *locale_list[] = {
 	"aa", //  Afar
@@ -755,8 +764,17 @@ static const char *locale_names[] = {
 	0
 };
 
+// Windows has some weird locale identifiers which do not honor the ISO 639-1
+// standardized nomenclature. Whenever those don't conflict with existing ISO
+// identifiers, we override them.
+//
+// Reference:
+// - https://msdn.microsoft.com/en-us/library/windows/desktop/ms693062(v=vs.85).aspx
+
 static const char *locale_renames[][2] = {
-	{ "no", "nb" },
+	{ "in", "id" }, //  Indonesian
+	{ "iw", "he" }, //  Hebrew
+	{ "no", "nb" }, //  Norwegian Bokmål
 	{ NULL, NULL }
 };
 
@@ -872,7 +890,7 @@ void Translation::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_set_messages"), &Translation::_set_messages);
 	ClassDB::bind_method(D_METHOD("_get_messages"), &Translation::_get_messages);
 
-	ADD_PROPERTY(PropertyInfo(Variant::POOL_STRING_ARRAY, "messages", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "_set_messages", "_get_messages");
+	ADD_PROPERTY(PropertyInfo(Variant::POOL_STRING_ARRAY, "messages", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL), "_set_messages", "_get_messages");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "locale"), "set_locale", "get_locale");
 }
 

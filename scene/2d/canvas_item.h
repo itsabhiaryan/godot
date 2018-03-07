@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,12 +27,14 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef CANVAS_ITEM_H
 #define CANVAS_ITEM_H
 
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
 #include "scene/resources/material.h"
+#include "scene/resources/multimesh.h"
 #include "scene/resources/shader.h"
 #include "scene/resources/texture.h"
 
@@ -229,6 +231,7 @@ public:
 	// Used to resize/move/select the node
 	virtual void _edit_set_rect(const Rect2 &p_rect){};
 	virtual Rect2 _edit_get_rect() const { return Rect2(-32, -32, 64, 64); };
+	virtual bool _edit_is_selected_on_click(const Point2 &p_point, double p_tolerance) const { return _edit_get_rect().has_point(p_point); }
 	Rect2 _edit_get_item_and_children_rect() const;
 	virtual bool _edit_use_rect() const { return false; };
 
@@ -279,6 +282,9 @@ public:
 	void draw_primitive(const Vector<Point2> &p_points, const Vector<Color> &p_colors, const Vector<Point2> &p_uvs, Ref<Texture> p_texture = Ref<Texture>(), float p_width = 1, const Ref<Texture> &p_normal_map = Ref<Texture>());
 	void draw_polygon(const Vector<Point2> &p_points, const Vector<Color> &p_colors, const Vector<Point2> &p_uvs = Vector<Point2>(), Ref<Texture> p_texture = Ref<Texture>(), const Ref<Texture> &p_normal_map = Ref<Texture>(), bool p_antialiased = false);
 	void draw_colored_polygon(const Vector<Point2> &p_points, const Color &p_color, const Vector<Point2> &p_uvs = Vector<Point2>(), Ref<Texture> p_texture = Ref<Texture>(), const Ref<Texture> &p_normal_map = Ref<Texture>(), bool p_antialiased = false);
+
+	void draw_mesh(const Ref<Mesh> &p_mesh, const Ref<Texture> &p_texture, const Ref<Texture> &p_normal_map);
+	void draw_multimesh(const Ref<MultiMesh> &p_multimesh, const Ref<Texture> &p_texture, const Ref<Texture> &p_normal_map);
 
 	void draw_string(const Ref<Font> &p_font, const Point2 &p_pos, const String &p_text, const Color &p_modulate = Color(1, 1, 1), int p_clip_w = -1);
 	float draw_char(const Ref<Font> &p_font, const Point2 &p_pos, const String &p_char, const String &p_next = "", const Color &p_modulate = Color(1, 1, 1));

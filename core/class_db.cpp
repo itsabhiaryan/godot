@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "class_db.h"
 
 #include "os/mutex.h"
@@ -206,6 +207,47 @@ MethodDefinition D_METHOD(const char *p_name, const char *p_arg1, const char *p_
 	return md;
 }
 
+MethodDefinition D_METHOD(const char *p_name, const char *p_arg1, const char *p_arg2, const char *p_arg3, const char *p_arg4, const char *p_arg5, const char *p_arg6, const char *p_arg7, const char *p_arg8, const char *p_arg9, const char *p_arg10, const char *p_arg11, const char *p_arg12) {
+
+	MethodDefinition md;
+	md.name = StaticCString::create(p_name);
+	md.args.resize(12);
+	md.args[0] = StaticCString::create(p_arg1);
+	md.args[1] = StaticCString::create(p_arg2);
+	md.args[2] = StaticCString::create(p_arg3);
+	md.args[3] = StaticCString::create(p_arg4);
+	md.args[4] = StaticCString::create(p_arg5);
+	md.args[5] = StaticCString::create(p_arg6);
+	md.args[6] = StaticCString::create(p_arg7);
+	md.args[7] = StaticCString::create(p_arg8);
+	md.args[8] = StaticCString::create(p_arg9);
+	md.args[9] = StaticCString::create(p_arg10);
+	md.args[10] = StaticCString::create(p_arg11);
+	md.args[11] = StaticCString::create(p_arg12);
+	return md;
+}
+
+MethodDefinition D_METHOD(const char *p_name, const char *p_arg1, const char *p_arg2, const char *p_arg3, const char *p_arg4, const char *p_arg5, const char *p_arg6, const char *p_arg7, const char *p_arg8, const char *p_arg9, const char *p_arg10, const char *p_arg11, const char *p_arg12, const char *p_arg13) {
+
+	MethodDefinition md;
+	md.name = StaticCString::create(p_name);
+	md.args.resize(13);
+	md.args[0] = StaticCString::create(p_arg1);
+	md.args[1] = StaticCString::create(p_arg2);
+	md.args[2] = StaticCString::create(p_arg3);
+	md.args[3] = StaticCString::create(p_arg4);
+	md.args[4] = StaticCString::create(p_arg5);
+	md.args[5] = StaticCString::create(p_arg6);
+	md.args[6] = StaticCString::create(p_arg7);
+	md.args[7] = StaticCString::create(p_arg8);
+	md.args[8] = StaticCString::create(p_arg9);
+	md.args[9] = StaticCString::create(p_arg10);
+	md.args[10] = StaticCString::create(p_arg11);
+	md.args[11] = StaticCString::create(p_arg12);
+	md.args[12] = StaticCString::create(p_arg13);
+	return md;
+}
+
 #endif
 
 ClassDB::APIType ClassDB::current_api = API_CORE;
@@ -305,7 +347,7 @@ uint64_t ClassDB::get_api_hash(APIType p_api) {
 	OBJTYPE_RLOCK;
 #ifdef DEBUG_METHODS_ENABLED
 
-	uint64_t hash = hash_djb2_one_64(HashMapHasherDefault::hash(VERSION_FULL_NAME));
+	uint64_t hash = hash_djb2_one_64(HashMapHasherDefault::hash(VERSION_FULL_CONFIG));
 
 	List<StringName> names;
 
@@ -348,10 +390,11 @@ uint64_t ClassDB::get_api_hash(APIType p_api) {
 				hash = hash_djb2_one_64(mb->get_argument_type(-1), hash); //return
 
 				for (int i = 0; i < mb->get_argument_count(); i++) {
-					hash = hash_djb2_one_64(mb->get_argument_info(i).type, hash);
-					hash = hash_djb2_one_64(mb->get_argument_info(i).name.hash(), hash);
-					hash = hash_djb2_one_64(mb->get_argument_info(i).hint, hash);
-					hash = hash_djb2_one_64(mb->get_argument_info(i).hint_string.hash(), hash);
+					const PropertyInfo info = mb->get_argument_info(i);
+					hash = hash_djb2_one_64(info.type, hash);
+					hash = hash_djb2_one_64(info.name.hash(), hash);
+					hash = hash_djb2_one_64(info.hint, hash);
+					hash = hash_djb2_one_64(info.hint_string.hash(), hash);
 				}
 
 				hash = hash_djb2_one_64(mb->get_default_argument_count(), hash);

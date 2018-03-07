@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,8 +27,10 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "physics_body_2d.h"
 
+#include "core/method_bind_ext.gen.inc"
 #include "engine.h"
 #include "scene/scene_string_names.h"
 
@@ -243,6 +245,7 @@ void RigidBody2D::_body_enter_tree(ObjectID p_id) {
 	Node *node = Object::cast_to<Node>(obj);
 	ERR_FAIL_COND(!node);
 
+	ERR_FAIL_COND(!contact_monitor);
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(p_id);
 	ERR_FAIL_COND(!E);
 	ERR_FAIL_COND(E->get().in_scene);
@@ -265,6 +268,7 @@ void RigidBody2D::_body_exit_tree(ObjectID p_id) {
 	Object *obj = ObjectDB::get_instance(p_id);
 	Node *node = Object::cast_to<Node>(obj);
 	ERR_FAIL_COND(!node);
+	ERR_FAIL_COND(!contact_monitor);
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(p_id);
 	ERR_FAIL_COND(!E);
 	ERR_FAIL_COND(!E->get().in_scene);
@@ -290,6 +294,7 @@ void RigidBody2D::_body_inout(int p_status, ObjectID p_instance, int p_body_shap
 	Object *obj = ObjectDB::get_instance(objid);
 	Node *node = Object::cast_to<Node>(obj);
 
+	ERR_FAIL_COND(!contact_monitor);
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(objid);
 
 	/*if (obj) {
@@ -309,7 +314,7 @@ void RigidBody2D::_body_inout(int p_status, ObjectID p_instance, int p_body_shap
 			E->get().in_scene = node && node->is_inside_tree();
 			if (node) {
 				node->connect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree, make_binds(objid));
-				node->connect(SceneStringNames::get_singleton()->tree_exited, this, SceneStringNames::get_singleton()->_body_exit_tree, make_binds(objid));
+				node->connect(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_body_exit_tree, make_binds(objid));
 				if (E->get().in_scene) {
 					emit_signal(SceneStringNames::get_singleton()->body_entered, node);
 				}
@@ -338,7 +343,7 @@ void RigidBody2D::_body_inout(int p_status, ObjectID p_instance, int p_body_shap
 
 			if (node) {
 				node->disconnect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree);
-				node->disconnect(SceneStringNames::get_singleton()->tree_exited, this, SceneStringNames::get_singleton()->_body_exit_tree);
+				node->disconnect(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_body_exit_tree);
 				if (in_scene)
 					emit_signal(SceneStringNames::get_singleton()->body_exited, obj);
 			}
@@ -358,19 +363,17 @@ struct _RigidBody2DInOut {
 	int local_shape;
 };
 
-bool RigidBody2D::_test_motion(const Vector2 &p_motion, float p_margin, const Ref<Physics2DTestMotionResult> &p_result) {
+bool RigidBody2D::_test_motion(const Vector2 &p_motion, bool p_infinite_inertia, float p_margin, const Ref<Physics2DTestMotionResult> &p_result) {
 
 	Physics2DServer::MotionResult *r = NULL;
 	if (p_result.is_valid())
 		r = p_result->get_result_ptr();
-	return Physics2DServer::get_singleton()->body_test_motion(get_rid(), get_global_transform(), p_motion, p_margin, r);
+	return Physics2DServer::get_singleton()->body_test_motion(get_rid(), get_global_transform(), p_motion, p_infinite_inertia, p_margin, r);
 }
 
 void RigidBody2D::_direct_state_changed(Object *p_state) {
 
-//eh.. fuck
 #ifdef DEBUG_ENABLED
-
 	state = Object::cast_to<Physics2DDirectBodyState>(p_state);
 #else
 	state = (Physics2DDirectBodyState *)p_state; //trust it
@@ -762,6 +765,14 @@ void RigidBody2D::set_contact_monitor(bool p_enabled) {
 		for (Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.front(); E; E = E->next()) {
 
 			//clean up mess
+			Object *obj = ObjectDB::get_instance(E->key());
+			Node *node = Object::cast_to<Node>(obj);
+
+			if (node) {
+
+				node->disconnect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree);
+				node->disconnect(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_body_exit_tree);
+			}
 		}
 
 		memdelete(contact_monitor);
@@ -806,7 +817,7 @@ String RigidBody2D::get_configuration_warning() const {
 		if (warning != String()) {
 			warning += "\n";
 		}
-		warning += TTR("Size changes to RigidBody2D (in character or rigid modes) will be overriden by the physics engine when running.\nChange the size in children collision shapes instead.");
+		warning += TTR("Size changes to RigidBody2D (in character or rigid modes) will be overridden by the physics engine when running.\nChange the size in children collision shapes instead.");
 	}
 
 	return warning;
@@ -876,7 +887,7 @@ void RigidBody2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_can_sleep", "able_to_sleep"), &RigidBody2D::set_can_sleep);
 	ClassDB::bind_method(D_METHOD("is_able_to_sleep"), &RigidBody2D::is_able_to_sleep);
 
-	ClassDB::bind_method(D_METHOD("test_motion", "motion", "margin", "result"), &RigidBody2D::_test_motion, DEFVAL(0.08), DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("test_motion", "motion", "infinite_inertia", "margin", "result"), &RigidBody2D::_test_motion, DEFVAL(true), DEFVAL(0.08), DEFVAL(Variant()));
 
 	ClassDB::bind_method(D_METHOD("_direct_state_changed"), &RigidBody2D::_direct_state_changed);
 	ClassDB::bind_method(D_METHOD("_body_enter_tree"), &RigidBody2D::_body_enter_tree);
@@ -888,6 +899,7 @@ void RigidBody2D::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "mode", PROPERTY_HINT_ENUM, "Rigid,Static,Character,Kinematic"), "set_mode", "get_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "mass", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01"), "set_mass", "get_mass");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "inertia", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01", 0), "set_inertia", "get_inertia");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "weight", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01", PROPERTY_USAGE_EDITOR), "set_weight", "get_weight");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "friction", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_friction", "get_friction");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "bounce", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_bounce", "get_bounce");
@@ -904,6 +916,9 @@ void RigidBody2D::_bind_methods() {
 	ADD_GROUP("Angular", "angular_");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "angular_velocity"), "set_angular_velocity", "get_angular_velocity");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "angular_damp", PROPERTY_HINT_RANGE, "-1,128,0.01"), "set_angular_damp", "get_angular_damp");
+	ADD_GROUP("Applied Forces", "applied_");
+	ADD_PROPERTYNZ(PropertyInfo(Variant::VECTOR2, "applied_force"), "set_applied_force", "get_applied_force");
+	ADD_PROPERTYNZ(PropertyInfo(Variant::REAL, "applied_torque"), "set_applied_torque", "get_applied_torque");
 
 	ADD_SIGNAL(MethodInfo("body_shape_entered", PropertyInfo(Variant::INT, "body_id"), PropertyInfo(Variant::OBJECT, "body"), PropertyInfo(Variant::INT, "body_shape"), PropertyInfo(Variant::INT, "local_shape")));
 	ADD_SIGNAL(MethodInfo("body_shape_exited", PropertyInfo(Variant::INT, "body_id"), PropertyInfo(Variant::OBJECT, "body"), PropertyInfo(Variant::INT, "body_shape"), PropertyInfo(Variant::INT, "local_shape")));
@@ -956,11 +971,11 @@ RigidBody2D::~RigidBody2D() {
 
 //////////////////////////
 
-Ref<KinematicCollision2D> KinematicBody2D::_move(const Vector2 &p_motion) {
+Ref<KinematicCollision2D> KinematicBody2D::_move(const Vector2 &p_motion, bool p_infinite_inertia) {
 
 	Collision col;
 
-	if (move_and_collide(p_motion, col)) {
+	if (move_and_collide(p_motion, p_infinite_inertia, col)) {
 		if (motion_cache.is_null()) {
 			motion_cache.instance();
 			motion_cache->owner = this;
@@ -974,11 +989,11 @@ Ref<KinematicCollision2D> KinematicBody2D::_move(const Vector2 &p_motion) {
 	return Ref<KinematicCollision2D>();
 }
 
-bool KinematicBody2D::move_and_collide(const Vector2 &p_motion, Collision &r_collision) {
+bool KinematicBody2D::move_and_collide(const Vector2 &p_motion, bool p_infinite_inertia, Collision &r_collision) {
 
 	Transform2D gt = get_global_transform();
 	Physics2DServer::MotionResult result;
-	bool colliding = Physics2DServer::get_singleton()->body_test_motion(get_rid(), gt, p_motion, margin, &result);
+	bool colliding = Physics2DServer::get_singleton()->body_test_motion(get_rid(), gt, p_motion, p_infinite_inertia, margin, &result);
 
 	if (colliding) {
 		r_collision.collider_metadata = result.collider_metadata;
@@ -998,7 +1013,7 @@ bool KinematicBody2D::move_and_collide(const Vector2 &p_motion, Collision &r_col
 	return colliding;
 }
 
-Vector2 KinematicBody2D::move_and_slide(const Vector2 &p_linear_velocity, const Vector2 &p_floor_direction, float p_slope_stop_min_velocity, int p_max_slides, float p_floor_max_angle) {
+Vector2 KinematicBody2D::move_and_slide(const Vector2 &p_linear_velocity, const Vector2 &p_floor_direction, bool p_infinite_inertia, float p_slope_stop_min_velocity, int p_max_slides, float p_floor_max_angle) {
 
 	Vector2 motion = (floor_velocity + p_linear_velocity) * get_physics_process_delta_time();
 	Vector2 lv = p_linear_velocity;
@@ -1013,7 +1028,7 @@ Vector2 KinematicBody2D::move_and_slide(const Vector2 &p_linear_velocity, const 
 
 		Collision collision;
 
-		bool collided = move_and_collide(motion, collision);
+		bool collided = move_and_collide(motion, p_infinite_inertia, collision);
 
 		if (collided) {
 
@@ -1080,11 +1095,11 @@ Vector2 KinematicBody2D::get_floor_velocity() const {
 	return floor_velocity;
 }
 
-bool KinematicBody2D::test_move(const Transform2D &p_from, const Vector2 &p_motion) {
+bool KinematicBody2D::test_move(const Transform2D &p_from, const Vector2 &p_motion, bool p_infinite_inertia) {
 
 	ERR_FAIL_COND_V(!is_inside_tree(), false);
 
-	return Physics2DServer::get_singleton()->body_test_motion(get_rid(), p_from, p_motion, margin);
+	return Physics2DServer::get_singleton()->body_test_motion(get_rid(), p_from, p_motion, p_infinite_inertia, margin);
 }
 
 void KinematicBody2D::set_safe_margin(float p_margin) {
@@ -1125,10 +1140,10 @@ Ref<KinematicCollision2D> KinematicBody2D::_get_slide_collision(int p_bounce) {
 
 void KinematicBody2D::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("move_and_collide", "rel_vec"), &KinematicBody2D::_move);
-	ClassDB::bind_method(D_METHOD("move_and_slide", "linear_velocity", "floor_normal", "slope_stop_min_velocity", "max_bounces", "floor_max_angle"), &KinematicBody2D::move_and_slide, DEFVAL(Vector2(0, 0)), DEFVAL(5), DEFVAL(4), DEFVAL(Math::deg2rad((float)45)));
+	ClassDB::bind_method(D_METHOD("move_and_collide", "rel_vec", "infinite_inertia"), &KinematicBody2D::_move, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("move_and_slide", "linear_velocity", "floor_normal", "infinite_inertia", "slope_stop_min_velocity", "max_bounces", "floor_max_angle"), &KinematicBody2D::move_and_slide, DEFVAL(Vector2(0, 0)), DEFVAL(true), DEFVAL(5), DEFVAL(4), DEFVAL(Math::deg2rad((float)45)));
 
-	ClassDB::bind_method(D_METHOD("test_move", "from", "rel_vec"), &KinematicBody2D::test_move);
+	ClassDB::bind_method(D_METHOD("test_move", "from", "rel_vec", "infinite_inertia"), &KinematicBody2D::test_move);
 
 	ClassDB::bind_method(D_METHOD("is_on_floor"), &KinematicBody2D::is_on_floor);
 	ClassDB::bind_method(D_METHOD("is_on_ceiling"), &KinematicBody2D::is_on_ceiling);

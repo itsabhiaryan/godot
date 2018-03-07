@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #if defined(OPENGL_ENABLED) || defined(GLES_ENABLED)
 
 // Author: Juan Linietsky <reduzio@gmail.com>, (C) 2008
@@ -37,6 +38,8 @@
 #define WGL_CONTEXT_MINOR_VERSION_ARB 0x2092
 #define WGL_CONTEXT_FLAGS_ARB 0x2094
 #define WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB 0x00000002
+#define WGL_CONTEXT_PROFILE_MASK_ARB 0x9126
+#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB 0x00000001
 
 typedef HGLRC(APIENTRY *PFNWGLCREATECONTEXTATTRIBSARBPROC)(HDC, HGLRC, const int *);
 
@@ -152,6 +155,7 @@ Error ContextGL_Win::initialize() {
 			WGL_CONTEXT_MAJOR_VERSION_ARB, 3, //we want a 3.3 context
 			WGL_CONTEXT_MINOR_VERSION_ARB, 3,
 			//and it shall be forward compatible so that we can only use up to date functionality
+			WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
 			WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB /*| _WGL_CONTEXT_DEBUG_BIT_ARB*/,
 			0
 		}; //zero indicates the end of the array

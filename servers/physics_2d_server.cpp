@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,7 +27,9 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "physics_2d_server.h"
+#include "core/method_bind_ext.gen.inc"
 #include "core/project_settings.h"
 #include "print_string.h"
 
@@ -107,6 +109,17 @@ void Physics2DDirectBodyState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_step"), &Physics2DDirectBodyState::get_step);
 	ClassDB::bind_method(D_METHOD("integrate_forces"), &Physics2DDirectBodyState::integrate_forces);
 	ClassDB::bind_method(D_METHOD("get_space_state"), &Physics2DDirectBodyState::get_space_state);
+
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "step"), "", "get_step");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "inverse_mass"), "", "get_inverse_mass");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "inverse_inertia"), "", "get_inverse_inertia");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "total_angular_damp"), "", "get_total_angular_damp");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "total_linear_damp"), "", "get_total_linear_damp");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "total_gravity"), "", "get_total_gravity");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "angular_velocity"), "set_angular_velocity", "get_angular_velocity");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "linear_velocity"), "set_linear_velocity", "get_linear_velocity");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "sleeping"), "set_sleep_state", "is_sleeping");
+	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM2D, "transform"), "set_transform", "get_transform");
 }
 
 Physics2DDirectBodyState::Physics2DDirectBodyState() {}
@@ -156,9 +169,9 @@ float Physics2DShapeQueryParameters::get_margin() const {
 	return margin;
 }
 
-void Physics2DShapeQueryParameters::set_collision_mask(int p_collision_layer) {
+void Physics2DShapeQueryParameters::set_collision_mask(int p_collision_mask) {
 
-	collision_mask = p_collision_layer;
+	collision_mask = p_collision_mask;
 }
 int Physics2DShapeQueryParameters::get_collision_mask() const {
 
@@ -203,6 +216,14 @@ void Physics2DShapeQueryParameters::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_exclude", "exclude"), &Physics2DShapeQueryParameters::set_exclude);
 	ClassDB::bind_method(D_METHOD("get_exclude"), &Physics2DShapeQueryParameters::get_exclude);
+
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "collision_layer", PROPERTY_HINT_LAYERS_2D_PHYSICS), "set_collision_layer", "get_collision_layer");
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "exclude", PROPERTY_HINT_NONE, itos(Variant::_RID) + ":"), "set_exclude", "get_exclude");
+	ADD_PROPERTY(PropertyInfo(Variant::REAL, "margin", PROPERTY_HINT_RANGE, "0,100,0.01"), "set_margin", "get_margin");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "motion"), "set_motion", "get_motion");
+	//ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "shape", PROPERTY_HINT_RESOURCE_TYPE, "Shape2D"), "set_shape", ""); // FIXME: Lacks a getter
+	ADD_PROPERTY(PropertyInfo(Variant::_RID, "shape_rid"), "set_shape_rid", "get_shape_rid");
+	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM2D, "transform"), "set_transform", "get_transform");
 }
 
 Physics2DShapeQueryParameters::Physics2DShapeQueryParameters() {
@@ -435,6 +456,16 @@ void Physics2DTestMotionResult::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_collider_rid"), &Physics2DTestMotionResult::get_collider_rid);
 	ClassDB::bind_method(D_METHOD("get_collider"), &Physics2DTestMotionResult::get_collider);
 	ClassDB::bind_method(D_METHOD("get_collider_shape"), &Physics2DTestMotionResult::get_collider_shape);
+
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "motion"), "", "get_motion");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "motion_remainder"), "", "get_motion_remainder");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "collision_point"), "", "get_collision_point");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "collision_normal"), "", "get_collision_normal");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "collider_velocity"), "", "get_collider_velocity");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "collider_id", PROPERTY_HINT_OBJECT_ID), "", "get_collider_id");
+	ADD_PROPERTY(PropertyInfo(Variant::_RID, "collider_rid"), "", "get_collider_rid");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "collider"), "", "get_collider");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "collider_shape"), "", "get_collider_shape");
 }
 
 Physics2DTestMotionResult::Physics2DTestMotionResult() {
@@ -446,12 +477,12 @@ Physics2DTestMotionResult::Physics2DTestMotionResult() {
 
 ///////////////////////////////////////
 
-bool Physics2DServer::_body_test_motion(RID p_body, const Transform2D &p_from, const Vector2 &p_motion, float p_margin, const Ref<Physics2DTestMotionResult> &p_result) {
+bool Physics2DServer::_body_test_motion(RID p_body, const Transform2D &p_from, const Vector2 &p_motion, bool p_infinite_inertia, float p_margin, const Ref<Physics2DTestMotionResult> &p_result) {
 
 	MotionResult *r = NULL;
 	if (p_result.is_valid())
 		r = p_result->get_result_ptr();
-	return body_test_motion(p_body, p_from, p_motion, p_margin, r);
+	return body_test_motion(p_body, p_from, p_motion, p_infinite_inertia, p_margin, r);
 }
 
 void Physics2DServer::_bind_methods() {
@@ -568,7 +599,7 @@ void Physics2DServer::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("body_set_force_integration_callback", "body", "receiver", "method", "userdata"), &Physics2DServer::body_set_force_integration_callback, DEFVAL(Variant()));
 
-	ClassDB::bind_method(D_METHOD("body_test_motion", "body", "from", "motion", "margin", "result"), &Physics2DServer::_body_test_motion, DEFVAL(0.08), DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("body_test_motion", "body", "from", "motion", "infinite_inertia", "margin", "result"), &Physics2DServer::_body_test_motion, DEFVAL(0.08), DEFVAL(Variant()));
 
 	ClassDB::bind_method(D_METHOD("body_get_direct_state", "body"), &Physics2DServer::body_get_direct_state);
 
@@ -653,6 +684,10 @@ void Physics2DServer::_bind_methods() {
 	BIND_ENUM_CONSTANT(JOINT_PIN);
 	BIND_ENUM_CONSTANT(JOINT_GROOVE);
 	BIND_ENUM_CONSTANT(JOINT_DAMPED_SPRING);
+
+	BIND_ENUM_CONSTANT(JOINT_PARAM_BIAS);
+	BIND_ENUM_CONSTANT(JOINT_PARAM_MAX_BIAS);
+	BIND_ENUM_CONSTANT(JOINT_PARAM_MAX_FORCE);
 
 	BIND_ENUM_CONSTANT(DAMPED_STRING_REST_LENGTH);
 	BIND_ENUM_CONSTANT(DAMPED_STRING_STIFFNESS);

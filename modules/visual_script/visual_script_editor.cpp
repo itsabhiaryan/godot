@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #include "visual_script_editor.h"
 
 #include "core/script_language.h"
@@ -228,7 +229,7 @@ protected:
 
 		if (String(p_name) == "type") {
 
-			Dictionary dc = d.copy();
+			Dictionary dc = d.duplicate();
 			dc["type"] = p_value;
 			undo_redo->create_action(TTR("Set Variable Type"));
 			undo_redo->add_do_method(script.ptr(), "set_variable_info", var, dc);
@@ -241,7 +242,7 @@ protected:
 
 		if (String(p_name) == "hint") {
 
-			Dictionary dc = d.copy();
+			Dictionary dc = d.duplicate();
 			dc["hint"] = p_value;
 			undo_redo->create_action(TTR("Set Variable Type"));
 			undo_redo->add_do_method(script.ptr(), "set_variable_info", var, dc);
@@ -254,7 +255,7 @@ protected:
 
 		if (String(p_name) == "hint_string") {
 
-			Dictionary dc = d.copy();
+			Dictionary dc = d.duplicate();
 			dc["hint_string"] = p_value;
 			undo_redo->create_action(TTR("Set Variable Type"));
 			undo_redo->add_do_method(script.ptr(), "set_variable_info", var, dc);
@@ -317,7 +318,8 @@ protected:
 		}
 		p_list->push_back(PropertyInfo(Variant::INT, "type", PROPERTY_HINT_ENUM, argt));
 		p_list->push_back(PropertyInfo(script->get_variable_info(var).type, "value", script->get_variable_info(var).hint, script->get_variable_info(var).hint_string, PROPERTY_USAGE_DEFAULT));
-		p_list->push_back(PropertyInfo(Variant::INT, "hint", PROPERTY_HINT_ENUM, "None,Range,ExpRange,Enum,ExpEasing,Length,SpriteFrame,KeyAccel,BitFlags,AllFlags,File,Dir,GlobalFile,GlobalDir,ResourceType,MultilineText"));
+		// Update this when PropertyHint changes
+		p_list->push_back(PropertyInfo(Variant::INT, "hint", PROPERTY_HINT_ENUM, "None,Range,ExpRange,Enum,ExpEasing,Length,SpriteFrame,KeyAccel,Flags,Layers2dRender,Layers2dPhysics,Layer3dRender,Layer3dPhysics,File,Dir,GlobalFile,GlobalDir,ResourceType,MultilineText,ColorNoAlpha,ImageCompressLossy,ImageCompressLossLess,ObjectId,String,NodePathToEditedNode,MethodOfVariantType,MethodOfBaseType,MethodOfInstance,MethodOfScript,PropertyOfVariantType,PropertyOfBaseType,PropertyOfInstance,PropertyOfScript,ObjectTooBig"));
 		p_list->push_back(PropertyInfo(Variant::STRING, "hint_string"));
 		p_list->push_back(PropertyInfo(Variant::BOOL, "export"));
 	}
@@ -480,33 +482,33 @@ void VisualScriptEditor::_update_graph(int p_only_id) {
 	select_func_text->hide();
 
 	Ref<Texture> type_icons[Variant::VARIANT_MAX] = {
-		Control::get_icon("MiniVariant", "EditorIcons"),
-		Control::get_icon("MiniBoolean", "EditorIcons"),
-		Control::get_icon("MiniInteger", "EditorIcons"),
-		Control::get_icon("MiniFloat", "EditorIcons"),
-		Control::get_icon("MiniString", "EditorIcons"),
-		Control::get_icon("MiniVector2", "EditorIcons"),
-		Control::get_icon("MiniRect2", "EditorIcons"),
-		Control::get_icon("MiniVector3", "EditorIcons"),
-		Control::get_icon("MiniTransform2D", "EditorIcons"),
-		Control::get_icon("MiniPlane", "EditorIcons"),
-		Control::get_icon("MiniQuat", "EditorIcons"),
-		Control::get_icon("MiniAabb", "EditorIcons"),
-		Control::get_icon("MiniBasis", "EditorIcons"),
-		Control::get_icon("MiniTransform", "EditorIcons"),
-		Control::get_icon("MiniColor", "EditorIcons"),
-		Control::get_icon("MiniPath", "EditorIcons"),
-		Control::get_icon("MiniRid", "EditorIcons"),
+		Control::get_icon("Variant", "EditorIcons"),
+		Control::get_icon("bool", "EditorIcons"),
+		Control::get_icon("int", "EditorIcons"),
+		Control::get_icon("float", "EditorIcons"),
+		Control::get_icon("String", "EditorIcons"),
+		Control::get_icon("Vector2", "EditorIcons"),
+		Control::get_icon("Rect2", "EditorIcons"),
+		Control::get_icon("Vector3", "EditorIcons"),
+		Control::get_icon("Transform2D", "EditorIcons"),
+		Control::get_icon("Plane", "EditorIcons"),
+		Control::get_icon("Quat", "EditorIcons"),
+		Control::get_icon("AABB", "EditorIcons"),
+		Control::get_icon("Basis", "EditorIcons"),
+		Control::get_icon("Transform", "EditorIcons"),
+		Control::get_icon("Color", "EditorIcons"),
+		Control::get_icon("NodePath", "EditorIcons"),
+		Control::get_icon("RID", "EditorIcons"),
 		Control::get_icon("MiniObject", "EditorIcons"),
-		Control::get_icon("MiniDictionary", "EditorIcons"),
-		Control::get_icon("MiniArray", "EditorIcons"),
-		Control::get_icon("MiniRawArray", "EditorIcons"),
-		Control::get_icon("MiniIntArray", "EditorIcons"),
-		Control::get_icon("MiniFloatArray", "EditorIcons"),
-		Control::get_icon("MiniStringArray", "EditorIcons"),
-		Control::get_icon("MiniVector2Array", "EditorIcons"),
-		Control::get_icon("MiniVector3Array", "EditorIcons"),
-		Control::get_icon("MiniColorArray", "EditorIcons")
+		Control::get_icon("Dictionary", "EditorIcons"),
+		Control::get_icon("Array", "EditorIcons"),
+		Control::get_icon("PoolByteArray", "EditorIcons"),
+		Control::get_icon("PoolIntArray", "EditorIcons"),
+		Control::get_icon("PoolRealArray", "EditorIcons"),
+		Control::get_icon("PoolStringArray", "EditorIcons"),
+		Control::get_icon("PoolVector2Array", "EditorIcons"),
+		Control::get_icon("PoolVector3Array", "EditorIcons"),
+		Control::get_icon("PoolColorArray", "EditorIcons")
 	};
 
 	Ref<Texture> seq_port = Control::get_icon("VisualShaderPort", "EditorIcons");
@@ -774,33 +776,33 @@ void VisualScriptEditor::_update_members() {
 	variables->set_custom_color(0, Control::get_color("mono_color", "Editor"));
 
 	Ref<Texture> type_icons[Variant::VARIANT_MAX] = {
-		Control::get_icon("MiniVariant", "EditorIcons"),
-		Control::get_icon("MiniBoolean", "EditorIcons"),
-		Control::get_icon("MiniInteger", "EditorIcons"),
-		Control::get_icon("MiniFloat", "EditorIcons"),
-		Control::get_icon("MiniString", "EditorIcons"),
-		Control::get_icon("MiniVector2", "EditorIcons"),
-		Control::get_icon("MiniRect2", "EditorIcons"),
-		Control::get_icon("MiniVector3", "EditorIcons"),
-		Control::get_icon("MiniMatrix32", "EditorIcons"),
-		Control::get_icon("MiniPlane", "EditorIcons"),
-		Control::get_icon("MiniQuat", "EditorIcons"),
-		Control::get_icon("MiniAabb", "EditorIcons"),
-		Control::get_icon("MiniMatrix3", "EditorIcons"),
-		Control::get_icon("MiniTransform", "EditorIcons"),
-		Control::get_icon("MiniColor", "EditorIcons"),
-		Control::get_icon("MiniPath", "EditorIcons"),
-		Control::get_icon("MiniRid", "EditorIcons"),
+		Control::get_icon("Variant", "EditorIcons"),
+		Control::get_icon("bool", "EditorIcons"),
+		Control::get_icon("int", "EditorIcons"),
+		Control::get_icon("float", "EditorIcons"),
+		Control::get_icon("String", "EditorIcons"),
+		Control::get_icon("Vector2", "EditorIcons"),
+		Control::get_icon("Rect2", "EditorIcons"),
+		Control::get_icon("Vector3", "EditorIcons"),
+		Control::get_icon("Transform2D", "EditorIcons"),
+		Control::get_icon("Plane", "EditorIcons"),
+		Control::get_icon("Quat", "EditorIcons"),
+		Control::get_icon("AABB", "EditorIcons"),
+		Control::get_icon("Basis", "EditorIcons"),
+		Control::get_icon("Transform", "EditorIcons"),
+		Control::get_icon("Color", "EditorIcons"),
+		Control::get_icon("NodePath", "EditorIcons"),
+		Control::get_icon("RID", "EditorIcons"),
 		Control::get_icon("MiniObject", "EditorIcons"),
-		Control::get_icon("MiniDictionary", "EditorIcons"),
-		Control::get_icon("MiniArray", "EditorIcons"),
-		Control::get_icon("MiniRawArray", "EditorIcons"),
-		Control::get_icon("MiniIntArray", "EditorIcons"),
-		Control::get_icon("MiniFloatArray", "EditorIcons"),
-		Control::get_icon("MiniStringArray", "EditorIcons"),
-		Control::get_icon("MiniVector2Array", "EditorIcons"),
-		Control::get_icon("MiniVector3Array", "EditorIcons"),
-		Control::get_icon("MiniColorArray", "EditorIcons")
+		Control::get_icon("Dictionary", "EditorIcons"),
+		Control::get_icon("Array", "EditorIcons"),
+		Control::get_icon("PoolByteArray", "EditorIcons"),
+		Control::get_icon("PoolIntArray", "EditorIcons"),
+		Control::get_icon("PoolRealArray", "EditorIcons"),
+		Control::get_icon("PoolStringArray", "EditorIcons"),
+		Control::get_icon("PoolVector2Array", "EditorIcons"),
+		Control::get_icon("PoolVector3Array", "EditorIcons"),
+		Control::get_icon("PoolColorArray", "EditorIcons")
 	};
 
 	List<StringName> var_names;
@@ -1303,6 +1305,35 @@ void VisualScriptEditor::_input(const Ref<InputEvent> &p_event) {
 
 	if (mb.is_valid() && !mb->is_pressed() && mb->get_button_index() == BUTTON_LEFT) {
 		revert_on_drag = String(); //so we can still drag functions
+	}
+}
+
+void VisualScriptEditor::_members_gui_input(const Ref<InputEvent> &p_event) {
+
+	Ref<InputEventKey> key = p_event;
+	if (key.is_valid() && key->is_pressed() && !key->is_echo()) {
+		if (members->has_focus()) {
+			TreeItem *ti = members->get_selected();
+			if (ti) {
+				TreeItem *root = members->get_root();
+				if (ti->get_parent() == root->get_children()) {
+					member_type = MEMBER_FUNCTION;
+				}
+				if (ti->get_parent() == root->get_children()->get_next()) {
+					member_type = MEMBER_VARIABLE;
+				}
+				if (ti->get_parent() == root->get_children()->get_next()->get_next()) {
+					member_type = MEMBER_SIGNAL;
+				}
+				member_name = ti->get_text(0);
+			}
+			if (ED_IS_SHORTCUT("visual_script_editor/delete_selected", p_event)) {
+				_member_option(MEMBER_REMOVE);
+			}
+			if (ED_IS_SHORTCUT("visual_script_editor/edit_member", p_event)) {
+				_member_option(MEMBER_EDIT);
+			}
+		}
 	}
 }
 
@@ -3088,7 +3119,7 @@ void VisualScriptEditor::_member_rmb_selected(const Vector2 &p_pos) {
 
 		member_type = MEMBER_FUNCTION;
 		member_name = ti->get_text(0);
-		member_popup->add_icon_item(del_icon, TTR("Remove Function"), MEMBER_REMOVE);
+		member_popup->add_icon_shortcut(del_icon, ED_GET_SHORTCUT("visual_script_editor/delete_selected"), MEMBER_REMOVE);
 		member_popup->popup();
 		return;
 	}
@@ -3097,9 +3128,9 @@ void VisualScriptEditor::_member_rmb_selected(const Vector2 &p_pos) {
 
 		member_type = MEMBER_VARIABLE;
 		member_name = ti->get_text(0);
-		member_popup->add_icon_item(edit_icon, TTR("Edit Variable"), MEMBER_EDIT);
+		member_popup->add_icon_shortcut(edit_icon, ED_GET_SHORTCUT("visual_script_editor/edit_member"), MEMBER_EDIT);
 		member_popup->add_separator();
-		member_popup->add_icon_item(del_icon, TTR("Remove Variable"), MEMBER_REMOVE);
+		member_popup->add_icon_shortcut(del_icon, ED_GET_SHORTCUT("visual_script_editor/delete_selected"), MEMBER_REMOVE);
 		member_popup->popup();
 		return;
 	}
@@ -3108,9 +3139,9 @@ void VisualScriptEditor::_member_rmb_selected(const Vector2 &p_pos) {
 
 		member_type = MEMBER_SIGNAL;
 		member_name = ti->get_text(0);
-		member_popup->add_icon_item(edit_icon, TTR("Edit Signal"), MEMBER_EDIT);
+		member_popup->add_icon_shortcut(edit_icon, ED_GET_SHORTCUT("visual_script_editor/edit_member"), MEMBER_EDIT);
 		member_popup->add_separator();
-		member_popup->add_icon_item(del_icon, TTR("Remove Signal"), MEMBER_REMOVE);
+		member_popup->add_icon_shortcut(del_icon, ED_GET_SHORTCUT("visual_script_editor/delete_selected"), MEMBER_REMOVE);
 		member_popup->popup();
 		return;
 	}
@@ -3241,6 +3272,7 @@ void VisualScriptEditor::_bind_methods() {
 	ClassDB::bind_method("drop_data_fw", &VisualScriptEditor::drop_data_fw);
 
 	ClassDB::bind_method("_input", &VisualScriptEditor::_input);
+	ClassDB::bind_method("_members_gui_input", &VisualScriptEditor::_members_gui_input);
 	ClassDB::bind_method("_on_nodes_delete", &VisualScriptEditor::_on_nodes_delete);
 	ClassDB::bind_method("_on_nodes_duplicate", &VisualScriptEditor::_on_nodes_duplicate);
 
@@ -3303,6 +3335,7 @@ VisualScriptEditor::VisualScriptEditor() {
 	members->connect("button_pressed", this, "_member_button");
 	members->connect("item_edited", this, "_member_edited");
 	members->connect("cell_selected", this, "_member_selected", varray(), CONNECT_DEFERRED);
+	members->connect("gui_input", this, "_members_gui_input");
 	members->set_allow_reselect(true);
 	members->set_hide_folding(true);
 	members->set_drag_forwarding(this);
@@ -3476,12 +3509,13 @@ static void register_editor_callback() {
 
 	ScriptEditor::register_create_script_editor_function(create_editor);
 
-	ED_SHORTCUT("visual_script_editor/delete_selected", TTR("Delete Selected"));
+	ED_SHORTCUT("visual_script_editor/delete_selected", TTR("Delete Selected"), KEY_DELETE);
 	ED_SHORTCUT("visual_script_editor/toggle_breakpoint", TTR("Toggle Breakpoint"), KEY_F9);
 	ED_SHORTCUT("visual_script_editor/find_node_type", TTR("Find Node Type"), KEY_MASK_CMD + KEY_F);
 	ED_SHORTCUT("visual_script_editor/copy_nodes", TTR("Copy Nodes"), KEY_MASK_CMD + KEY_C);
 	ED_SHORTCUT("visual_script_editor/cut_nodes", TTR("Cut Nodes"), KEY_MASK_CMD + KEY_X);
 	ED_SHORTCUT("visual_script_editor/paste_nodes", TTR("Paste Nodes"), KEY_MASK_CMD + KEY_V);
+	ED_SHORTCUT("visual_script_editor/edit_member", TTR("Edit Member"), KEY_MASK_CMD + KEY_E);
 }
 
 void VisualScriptEditor::register_editor() {

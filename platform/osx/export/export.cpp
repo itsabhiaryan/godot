@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -74,7 +74,7 @@ public:
 	virtual String get_os_name() const { return "OSX"; }
 	virtual Ref<Texture> get_logo() const { return logo; }
 
-	virtual String get_binary_extension() const { return use_dmg() ? "dmg" : "zip"; }
+	virtual String get_binary_extension(const Ref<EditorExportPreset> &p_preset) const { return use_dmg() ? "dmg" : "zip"; }
 	virtual Error export_project(const Ref<EditorExportPreset> &p_preset, bool p_debug, const String &p_path, int p_flags = 0);
 
 	virtual bool can_export(const Ref<EditorExportPreset> &p_preset, String &r_error, bool &r_missing_templates) const;
@@ -101,15 +101,7 @@ void EditorExportPlatformOSX::get_preset_features(const Ref<EditorExportPreset> 
 		r_features->push_back("etc2");
 	}
 
-	int bits = p_preset->get("application/bits_mode");
-
-	if (bits == 0 || bits == 1) {
-		r_features->push_back("64");
-	}
-
-	if (bits == 0 || bits == 2) {
-		r_features->push_back("32");
-	}
+	r_features->push_back("64");
 }
 
 void EditorExportPlatformOSX::get_export_options(List<ExportOption> *r_options) {
@@ -125,7 +117,6 @@ void EditorExportPlatformOSX::get_export_options(List<ExportOption> *r_options) 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "application/short_version"), "1.0"));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "application/version"), "1.0"));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "application/copyright"), ""));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "application/bits_mode", PROPERTY_HINT_ENUM, "Fat (32 & 64 bits),64 bits,32 bits"), 0));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "display/high_res"), false));
 
 #ifdef OSX_ENABLED
@@ -323,11 +314,8 @@ Error EditorExportPlatformOSX::export_project(const Ref<EditorExportPreset> &p_p
 	ERR_FAIL_COND_V(!src_pkg_zip, ERR_CANT_OPEN);
 	int ret = unzGoToFirstFile(src_pkg_zip);
 
-	String binary_to_use = "godot_osx_" + String(p_debug ? "debug" : "release") + ".";
-	int bits_mode = p_preset->get("application/bits_mode");
-	binary_to_use += String(bits_mode == 0 ? "fat" : bits_mode == 1 ? "64" : "32");
+	String binary_to_use = "godot_osx_" + String(p_debug ? "debug" : "release") + ".64";
 
-	print_line("binary: " + binary_to_use);
 	String pkg_name;
 	if (p_preset->get("application/name") != "")
 		pkg_name = p_preset->get("application/name"); // app_name
@@ -356,6 +344,11 @@ Error EditorExportPlatformOSX::export_project(const Ref<EditorExportPreset> &p_p
 		if (err == OK) {
 			print_line("Creating " + tmp_app_path_name + "/Contents/MacOS");
 			err = tmp_app_path->make_dir_recursive(tmp_app_path_name + "/Contents/MacOS");
+		}
+
+		if (err == OK) {
+			print_line("Creating " + tmp_app_path_name + "/Contents/Frameworks");
+			err = tmp_app_path->make_dir_recursive(tmp_app_path_name + "/Contents/Frameworks");
 		}
 
 		if (err == OK) {
@@ -502,10 +495,23 @@ Error EditorExportPlatformOSX::export_project(const Ref<EditorExportPreset> &p_p
 
 		if (use_dmg()) {
 			String pack_path = tmp_app_path_name + "/Contents/Resources/" + pkg_name + ".pck";
-			err = save_pack(p_preset, pack_path);
+			Vector<SharedObject> shared_objects;
+			Error err = save_pack(p_preset, pack_path, &shared_objects);
 
 			// see if we can code sign our new package
 			String identity = p_preset->get("codesign/identity");
+
+			if (err == OK) {
+				DirAccess *da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+				for (int i = 0; i < shared_objects.size(); i++) {
+					da->copy(shared_objects[i].path, tmp_app_path_name + "/Contents/Frameworks/" + shared_objects[i].path.get_file());
+					if (err == OK && identity != "") {
+						err = _code_sign(p_preset, tmp_app_path_name + "/Contents/Frameworks/" + shared_objects[i].path.get_file());
+					}
+				}
+				memdelete(da);
+			}
+
 			if (err == OK && identity != "") {
 				ep.step("Code signing bundle", 2);
 
@@ -541,7 +547,9 @@ Error EditorExportPlatformOSX::export_project(const Ref<EditorExportPreset> &p_p
 		} else {
 
 			String pack_path = EditorSettings::get_singleton()->get_cache_dir().plus_file(pkg_name + ".pck");
-			Error err = save_pack(p_preset, pack_path);
+
+			Vector<SharedObject> shared_objects;
+			Error err = save_pack(p_preset, pack_path, &shared_objects);
 
 			if (err == OK) {
 				zipOpenNewFileInZip(dst_pkg_zip,
@@ -567,10 +575,31 @@ Error EditorExportPlatformOSX::export_project(const Ref<EditorExportPreset> &p_p
 							break;
 						zipWriteInFileInZip(dst_pkg_zip, buf, r);
 					}
+
 					zipCloseFileInZip(dst_pkg_zip);
 					memdelete(pf);
 				} else {
 					err = ERR_CANT_OPEN;
+				}
+
+				//add shared objects
+				for (int i = 0; i < shared_objects.size(); i++) {
+					Vector<uint8_t> file = FileAccess::get_file_as_array(shared_objects[i].path);
+					ERR_CONTINUE(file.empty());
+
+					zipOpenNewFileInZip(dst_pkg_zip,
+							(pkg_name + ".app/Contents/Frameworks/").plus_file(shared_objects[i].path.get_file()).utf8().get_data(),
+							NULL,
+							NULL,
+							0,
+							NULL,
+							0,
+							NULL,
+							Z_DEFLATED,
+							Z_DEFAULT_COMPRESSION);
+
+					zipWriteInFileInZip(dst_pkg_zip, file.ptr(), file.size());
+					zipCloseFileInZip(dst_pkg_zip);
 				}
 			}
 		}
@@ -585,21 +614,27 @@ Error EditorExportPlatformOSX::export_project(const Ref<EditorExportPreset> &p_p
 
 bool EditorExportPlatformOSX::can_export(const Ref<EditorExportPreset> &p_preset, String &r_error, bool &r_missing_templates) const {
 
-	bool valid = true;
+	bool valid = false;
 	String err;
 
-	if (!exists_export_template("osx.zip", &err)) {
-		valid = false;
+	if (exists_export_template("osx.zip", &err)) {
+		valid = true;
 	}
 
-	if (p_preset->get("custom_package/debug") != "" && !FileAccess::exists(p_preset->get("custom_package/debug"))) {
-		valid = false;
-		err += "Custom debug package not found.\n";
+	if (p_preset->get("custom_package/debug") != "") {
+		if (FileAccess::exists(p_preset->get("custom_package/debug"))) {
+			valid = true;
+		} else {
+			err += "Custom debug package not found.\n";
+		}
 	}
 
-	if (p_preset->get("custom_package/release") != "" && !FileAccess::exists(p_preset->get("custom_package/release"))) {
-		valid = false;
-		err += "Custom release package not found.\n";
+	if (p_preset->get("custom_package/release") != "") {
+		if (FileAccess::exists(p_preset->get("custom_package/release"))) {
+			valid = true;
+		} else {
+			err += "Custom release package not found.\n";
+		}
 	}
 
 	if (!err.empty())

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef VISUALSERVERSCENE_H
 #define VISUALSERVERSCENE_H
 
@@ -69,34 +70,6 @@ public:
 
 		Portal() { enabled=true; disable_distance=50; disable_color=Color(); connect_range=0.8; }
 	};
-
-	struct BakedLight {
-
-		Rasterizer::BakedLightData data;
-		PoolVector<int> sampler;
-		AABB octree_aabb;
-		Size2i octree_tex_size;
-		Size2i light_tex_size;
-
-	};
-
-	struct BakedLightSampler {
-
-		float params[BAKED_LIGHT_SAMPLER_MAX];
-		int resolution;
-		Vector<Vector3> dp_cache;
-
-		BakedLightSampler() {
-			params[BAKED_LIGHT_SAMPLER_STRENGTH]=1.0;
-			params[BAKED_LIGHT_SAMPLER_ATTENUATION]=1.0;
-			params[BAKED_LIGHT_SAMPLER_RADIUS]=1.0;
-			params[BAKED_LIGHT_SAMPLER_DETAIL_RATIO]=0.1;
-			resolution=16;
-		}
-	};
-
-	void _update_baked_light_sampler_dp_cache(BakedLightSampler * blsamp);
-
 #endif
 
 	/* CAMERA API */
@@ -484,7 +457,7 @@ public:
 	virtual void instance_set_visible(RID p_instance, bool p_visible);
 	virtual void instance_set_use_lightmap(RID p_instance, RID p_lightmap_instance, RID p_lightmap);
 
-	virtual void instance_set_custom_aabb(RID p_insatnce, AABB aabb);
+	virtual void instance_set_custom_aabb(RID p_instance, AABB p_aabb);
 
 	virtual void instance_attach_skeleton(RID p_instance, RID p_skeleton);
 	virtual void instance_set_exterior(RID p_instance, bool p_enabled);
